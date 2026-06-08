@@ -21,6 +21,7 @@ export interface LPCreatorState {
   targetAudience: string;
   sellingPoints: [string, string, string];
   catchphraseHint: string;
+  industry: string;
   // Step 4 CV settings
   cvGoal: LPInput['cvGoal'];
   cvButtonText: string;
@@ -45,6 +46,7 @@ interface LPCreatorActions {
   setTargetAudience: (v: string) => void;
   setSellingPoint: (idx: 0 | 1 | 2, v: string) => void;
   setCatchphraseHint: (v: string) => void;
+  setIndustry: (v: string) => void;
   setCvGoal: (v: LPInput['cvGoal']) => void;
   setCvButtonText: (v: string) => void;
   setCvUrl: (v: string) => void;
@@ -69,6 +71,7 @@ const initial: LPCreatorState = {
   targetAudience: '',
   sellingPoints: ['', '', ''],
   catchphraseHint: '',
+  industry: 'other',
   cvGoal: 'inquiry',
   cvButtonText: 'お問い合わせはこちら',
   cvUrl: '',
@@ -96,6 +99,7 @@ export const useLPCreatorStore = create<LPCreatorState & LPCreatorActions>(set =
     return { sellingPoints: pts };
   }),
   setCatchphraseHint: catchphraseHint => set({ catchphraseHint }),
+  setIndustry: industry => set({ industry }),
   setCvGoal: cvGoal => set({ cvGoal }),
   setCvButtonText: cvButtonText => set({ cvButtonText }),
   setCvUrl: cvUrl => set({ cvUrl }),

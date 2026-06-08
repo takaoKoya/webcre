@@ -284,10 +284,24 @@ const LP_PURPOSE_OPTIONS = [
   '無料相談・資料請求', 'リクルート・採用', 'ECサイト商品LP', 'その他',
 ];
 
+const INDUSTRY_OPTIONS = [
+  { value: 'beauty', label: '美容・サロン' },
+  { value: 'medical', label: '医療・クリニック' },
+  { value: 'restaurant', label: '飲食・レストラン' },
+  { value: 'fitness', label: 'フィットネス' },
+  { value: 'legal', label: '法律・士業' },
+  { value: 'realestate', label: '不動産' },
+  { value: 'education', label: '教育・スクール' },
+  { value: 'it', label: 'IT・テクノロジー' },
+  { value: 'construction', label: '建設・工務店' },
+  { value: 'retail', label: '小売・ショップ' },
+  { value: 'other', label: 'その他' },
+];
+
 function Step3() {
   const {
-    businessName, lpPurpose, targetAudience, sellingPoints, catchphraseHint,
-    setBusinessName, setLpPurpose, setTargetAudience, setSellingPoint, setCatchphraseHint,
+    businessName, lpPurpose, targetAudience, sellingPoints, catchphraseHint, industry,
+    setBusinessName, setLpPurpose, setTargetAudience, setSellingPoint, setCatchphraseHint, setIndustry,
     toneAnalysis, setStep,
   } = useLPCreatorStore();
 
@@ -299,6 +313,25 @@ function Step3() {
       <div>
         <h2 className="text-xl font-bold text-white mb-1">LP詳細を入力</h2>
         <p className="text-white/50 text-sm">どんなLPを作りたいかを教えてください</p>
+      </div>
+
+      <div>
+        <label className="block text-white/60 text-xs mb-1.5">業種 <span className="text-red-400">*</span></label>
+        <div className="flex flex-wrap gap-2">
+          {INDUSTRY_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setIndustry(opt.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                industry === opt.value
+                  ? 'border-purple-500/60 bg-purple-500/20 text-purple-300'
+                  : 'border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>
@@ -413,7 +446,7 @@ function Step4() {
     cvGoal, cvButtonText, cvUrl, contactEmail,
     setCvGoal, setCvButtonText, setCvUrl, setContactEmail,
     setStep,
-    businessName, lpPurpose, targetAudience, sellingPoints, catchphraseHint, toneAnalysis,
+    businessName, lpPurpose, targetAudience, sellingPoints, catchphraseHint, industry, toneAnalysis,
     setGeneratedHtml, setGenerateLoading, setGenerateError,
   } = useLPCreatorStore();
 
@@ -433,6 +466,7 @@ function Step4() {
       cvButtonText,
       cvUrl: cvUrl || undefined,
       contactEmail: contactEmail || undefined,
+      industry,
     };
 
     try {
@@ -555,7 +589,7 @@ function Step4() {
 
 function Step5() {
   const { generatedHtml, businessName, setStep, setGenerateLoading, setGenerateError, setGeneratedHtml,
-    toneAnalysis, lpPurpose, targetAudience, sellingPoints, catchphraseHint, cvGoal, cvButtonText, cvUrl, contactEmail } = useLPCreatorStore();
+    toneAnalysis, lpPurpose, targetAudience, sellingPoints, catchphraseHint, industry, cvGoal, cvButtonText, cvUrl, contactEmail } = useLPCreatorStore();
   const [previewFull, setPreviewFull] = useState(false);
   const [regenLoading, setRegenLoading] = useState(false);
 
@@ -581,6 +615,7 @@ function Step5() {
       cvButtonText,
       cvUrl: cvUrl || undefined,
       contactEmail: contactEmail || undefined,
+      industry,
     };
     try {
       const res = await fetch('/api/generate-lp-from-site', {
