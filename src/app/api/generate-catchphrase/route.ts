@@ -64,6 +64,14 @@ JSONオブジェクトのみ: {"catchphrases": ["コピー1", "コピー2", "コ
     return NextResponse.json({ catchphrases });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ catchphrases: [] }, { status: 200 });
+    // 429やその他エラー時もフォールバックを返す
+    const { businessName, lpPurpose, targetAudience } = (await request.json().catch(() => ({}))) as Partial<CatchphraseInput>;
+    return NextResponse.json({ catchphrases: [
+      `${businessName || 'あなたのビジネス'}で、${targetAudience || 'お客様'}の毎日が変わる`,
+      `選ばれ続ける理由が、ここにある`,
+      `${lpPurpose || 'サービス'}なら、${businessName || 'わたしたち'}にお任せ`,
+      `あなたの課題に、最高の答えを`,
+      `一度体験すれば、もう手放せない`,
+    ]}, { status: 200 });
   }
 }

@@ -279,7 +279,7 @@ async function generateLPWithAI(input: LPInput): Promise<string> {
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: buildPrompt(input, images) },
     ],
-    max_tokens: 6000,
+    max_tokens: 16000,
   });
 
   let raw = response.choices[0]?.message?.content ?? '';
@@ -288,158 +288,150 @@ async function generateLPWithAI(input: LPInput): Promise<string> {
   return raw;
 }
 
-const SYSTEM_PROMPT = `あなたは日本最高峰のLPデザイナー兼コンバージョンコピーライターです。
-電通・博報堂レベルのコピーライティングとWebデザインの知識を持ち、実際にCVRを3倍以上改善してきた実績があります。
+const SYSTEM_PROMPT = `あなたは2026年基準の日本最高峰LPデザイナー兼コンバージョンコピーライターです。
+電通・博報堂・WPPレベルのコピーライティングと、SEO/MEO/AIO/AEO/GEO完全対応のWebエンジニアリング知識を持ちます。
 
-【絶対に守るルール】
-1. LP目的に完全特化したコピーを書く（採用LPなら求職者視点、サービスLPなら顧客視点）
-2. 見出しは必ずword-break: keep-all; overflow-wrap: break-word; を設定（日本語の不自然な改行を防ぐ）
-3. 各セクションのコピーは全てユニークに書く（同じ文を2度使わない）
-4. 提供された画像URLを必ずそのまま使用（alt属性も必ず設定）
-5. JSON-LDスキーマを必ず含める
-6. OGPメタタグを完備する
-7. font-size: clamp()でレスポンシブタイポグラフィを必ず使用
-8. 合計1200行以上の高品質HTMLを生成する
-9. コードブロックなし。<!DOCTYPE html>から始まる完全なHTMLのみ返す
+【2026年最強LP：PASBECAT × AI最適化の絶対ルール】
 
-【デザイン原則】
-- ファーストビューは感情的インパクト重視（ユーザーが3秒で魅了される）
-- フォント: Google Fonts CDN経由で読み込む（Noto Serif JP + Noto Sans JP）
-- アニメーション: CSS @keyframes + Intersection Observer JSで実装（スクロール連動）
-- カラー: ブランドカラーを基軸にした洗練されたパレット
-- 余白: 十分な whitespace でプレミアム感を演出
-- CTAボタン: pulse-ring アニメーションで注目度UP
-- 数値実績: 視覚的にカウントアップ演出（JS）
-- モバイル: 完全レスポンシブ（320px〜1920pxまで対応）`;
+■ 構成（必ずこの順序で10セクション実装）
+1. HEAD: OGP完備 + Google Fonts + Schema.org JSON-LD（Organization + FAQPage + Service/LocalBusiness）
+2. FV（ファーストビュー）: H1テキスト + フルスクリーンヒーロービジュアル + 権威バッジ（実績数値） + 追従ヘッダー + 第1CTA
+3. Problem & Affinity: ターゲットの深いインサイトを突く3〜4つの悩み（共感を呼ぶコピー）
+4. Solution: 結論ファースト1文（主語+述語を明確に） + サービス全体像 + 画像
+5. Benefit（Bento UI）: CSS Gridカード3〜4枚 — 機能でなく「時間・感情・未来の変化」のベネフィット
+6. Evidence: カウントアップ数値4つ + 権威ある外部データ引用（調査機関名付き）
+7. Contents & Flow: 商品詳細 + 3ステップ利用フロー（HowTo schema対応）
+8. Voice（声）: 顔写真+氏名+役職+星5+具体的引用文 × 3名
+9. FAQ: Q&A形式5問（FAQPage schema + JSアコーディオン開閉）
+10. Action & Trigger: 最終大型CTA + マイクロコピー（「30秒で完了」等） + 追従フッターCTA（position:fixed）
+11. Footer + MEO: 会社概要 + 住所/TEL/営業時間テキスト + Googleマップiframe
+
+■ SEO/AIO/AEO/GEO技術要件（全て必須）
+- 100%テキスト化: 文字は必ずHTMLテキストで実装（画像内テキスト禁止）
+- H1は1つ、H2でセクション構造化（キーワード含む）
+- Schema.org JSON-LD: Organization + FAQPage + Service/LocalBusiness（業種による）
+- OGP完備: og:title, og:description, og:image, og:type, og:site_name
+- 結論ファーストのAIO文体: 主語+述語を明確にした簡潔な記述
+- GEO対応: 独自の数値データ・一次情報を必ず含める（「自社調査では〜%」等）
+- E-E-A-T: 専門性・権威性・信頼性をテキストで明示（著者/監修者情報含む）
+
+■ デザイン・技術要件（全て必須）
+- Google Fonts: Noto Serif JP（見出し） + Noto Sans JP（本文）をCDNで読み込む
+- CSSカスタムプロパティ: :rootで全カラー・フォント定義
+- word-break: keep-all; overflow-wrap: break-word; line-break: strict; — 全見出しに必須
+- font-size: clamp(最小, 推奨, 最大) — 全見出しにレスポンシブタイポグラフィ
+- Intersection Observer JS: スクロールでfadeInUp/fadeInLeftアニメーション（全セクション）
+- カウントアップJS: data-count属性の数値を0からアニメーション
+- 追従ヘッダー: backdrop-blur + スクロール時に背景dark化
+- 追従フッターCTA: position:fixed, bottom:0, width:100%, z-index:999（スマホ常時表示）
+- Bento UIグリッド: CSS Grid + border-radius:20px + gap:16px（Benefitセクション）
+- FAQアコーディオン: JS開閉、max-heightでheight transition
+- 画像: object-fit: cover, loading="lazy", 必ずalt属性設定
+- モバイル完全対応: 320px〜1920px（メディアクエリ必須）
+- scroll-behavior: smooth
+- @keyframes: fadeInUp, fadeInLeft, scaleIn, pulse-ring を実装
+
+■ コピーライティング絶対禁止事項
+- 「〜を徹底追求し、お客様の期待を超える成果をお届けします」→ 即禁止
+- 同じ説明文を複数箇所で使う → 禁止
+- 抽象的な美辞麗句のみ → 禁止
+- 必ず具体的な数字・変化・ベネフィットを書く
+- LP目的と無関係なコピー → 禁止（採用LPに顧客向け文章を書くな）
+
+■ 出力形式
+コードブロックなし。<!DOCTYPE html>から始まる完全なHTMLのみ返す。最低1500行。`;
 
 function buildPrompt(input: LPInput, images: string[]): string {
-  const { tone, businessName, lpPurpose, targetAudience, sellingPoints, catchphraseHint, cvGoal, cvButtonText, cvUrl, contactEmail } = input;
+  const { tone, businessName, lpPurpose, targetAudience, sellingPoints, catchphraseHint, cvGoal, cvButtonText, cvUrl, contactEmail, industry } = input;
   const cvLabel = CV_LABELS[cvGoal];
   const cvAction = cvUrl ? `href="${cvUrl}" target="_blank"` : cvGoal === 'tel' ? 'href="tel:"' : 'href="#contact"';
-  const heroImage = images[0];
-  const sectionImage1 = images[1] ?? images[0];
-  const sectionImage2 = images[2] ?? images[0];
   const sp = sellingPoints.filter(Boolean);
   const avatars = [1, 5, 12].map(getAvatarUrl);
   const ctx = getLPContext(input);
 
-  return `以下の仕様で、完全な高品質ランディングページHTMLを生成してください。
+  const schemaType = ctx.isRecruit ? 'JobPosting + Organization'
+    : industry === 'restaurant' ? 'Restaurant + FAQPage'
+    : industry === 'medical' ? 'MedicalBusiness + FAQPage'
+    : 'LocalBusiness + Service + FAQPage';
 
-## ブランド・デザイン情報
-- ビジネス名: ${businessName}
-- トンマナ: ${tone.toneLabel}（${tone.styleKeywords.join('・')}）
-- プライマリカラー: ${tone.colors.primary}
-- セカンダリカラー: ${tone.colors.secondary}
-- アクセントカラー: ${tone.colors.accent}
-- 背景色: ${tone.colors.background}
-- テキスト色: ${tone.colors.text}
-- 見出しフォント: ${tone.fonts.headline}
-- 本文フォント: ${tone.fonts.body}
+  const stats = ctx.isRecruit
+    ? [{ n: '98', u: '%', l: 'スタッフ定着率' }, { n: '3', u: 'ヶ月', l: '独り立ち研修' }, { n: '20', u: 'h', l: '月平均残業' }, { n: '100', u: '%', l: '有給取得実績' }]
+    : [{ n: '2,000', u: '件+', l: '累計実績' }, { n: '98', u: '%', l: '顧客満足度' }, { n: '10', u: '年+', l: '業界経験' }, { n: '24', u: 'h', l: 'サポート対応' }];
 
-## LP情報
-- LP目的: ${lpPurpose}
-- ターゲット: ${targetAudience}
-- 訴求ポイント:
-${sp.map((p, i) => `  ${i + 1}. ${p}`).join('\n')}
-- キャッチコピーヒント: ${catchphraseHint || '（魅力的に考案してください）'}
+  const faqs = ctx.isRecruit
+    ? [
+        ['未経験でも応募できますか？', 'はい、未経験大歓迎です。入社後3ヶ月の充実した研修プログラムで、基礎からしっかり身につけられます。'],
+        ['シフトの融通は利きますか？', '週2日〜OKのシフト制です。育児・介護中の方や副業との掛け持ちも可能です。'],
+        ['給与・昇給について教えてください', '経験・スキルに応じた給与設定で、入社後の昇給実績あり。インセンティブ制度もあります。'],
+        ['職場の雰囲気はどうですか？', '20〜40代のスタッフが活躍中。チームワークを大切にした職場で、わからないことはすぐ相談できます。'],
+        ['選考の流れを教えてください', '①WEB応募 → ②書類選考（3営業日以内）→ ③面接1回 → ④内定 です。お気軽にご応募ください。'],
+      ]
+    : [
+        [`${businessName}の料金はいくらですか？`, 'プランによって異なります。まずは無料相談にてお客様の状況をヒアリングし、最適なプランをご提案します。'],
+        ['どのくらいで効果が出ますか？', '多くのお客様が1〜3ヶ月以内に変化を実感されています。プロのサポートで最短で成果を出せるよう伴走します。'],
+        ['初めてでも安心ですか？', 'はい。初心者の方でも丁寧にサポートします。担当スタッフが最初から最後まで寄り添います。'],
+        ['解約・キャンセルはできますか？', 'はい、いつでも解約可能です。縛りや違約金はありません。まずはお気軽にお試しください。'],
+        ['オンラインでも対応できますか？', 'はい、全国対応可能です。Zoom等のオンラインミーティングでも同品質のサービスをご提供します。'],
+      ];
 
-## CVゴール
-- アクション: ${cvLabel}（${cvButtonText}）
-- CTAボタン: ${cvAction}
-${contactEmail ? `- 受信メール: ${contactEmail}` : ''}
+  return `## ビジネス情報
+- ビジネス名: **${businessName}**
+- 業種: ${industry ?? 'その他'} | LP目的: **${lpPurpose}** | ターゲット: **${targetAudience}**
+- キャッチコピーヒント: 「${catchphraseHint || 'ターゲットの感情を動かす最強コピーを創案せよ'}」
+- CVゴール: **${cvLabel}**（ボタン: 「${cvButtonText}」、リンク: ${cvAction}）
+${contactEmail ? `- 問い合わせ先: ${contactEmail}` : ''}
 
-## ターゲット心理分析
-ターゲット: ${targetAudience}
-このターゲットが抱える最大の不安・痛み・欲求を深く理解し、それを解決するストーリーを語ってください。
+## ブランドカラー・デザイン
+- Primary: ${tone.colors.primary} | Accent: ${tone.colors.accent} | BG: ${tone.colors.background} | Text: ${tone.colors.text}
+- トーン: ${tone.toneLabel}（${tone.styleKeywords.join('・')}）
+- 見出しフォント: Noto Serif JP | 本文: Noto Sans JP（Google Fonts必須）
 
-## コピーの禁止事項
-- 「〜を徹底追求し、お客様の期待を超える成果をお届けします。」→ 禁止（陳腐）
-- 同じ説明文を複数のカードに使う → 禁止
-- 抽象的な美辞麗句のみ → 禁止
-- 必ず具体的な数字・事例・ベネフィットを含める
+## 訴求ポイント（各カードに完全ユニークな説明文を書くこと — コピペ禁止）
+${sp.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
-## 重要：LP目的に基づくコピー指定
-LP目的: ${lpPurpose}
-CVゴール: ${cvLabel}
+## 使用する画像URL（このURLをそのまま使用、差し替え・省略禁止）
+- [HERO背景] ${images[0] ?? ''}
+- [Section-1] ${images[1] ?? images[0] ?? ''} 
+- [Section-2] ${images[2] ?? images[0] ?? ''}
+- [Section-3] ${images[3] ?? images[0] ?? ''}
+- [顔写真-A] ${avatars[0]}
+- [顔写真-B] ${avatars[1]}
+- [顔写真-C] ${avatars[2]}
 
-${ctx.isRecruit ? `
-このLPは【採用・求人LP】です。
-- コピーは全て求職者向けに書くこと
-- 「お客様」という言葉は使わない
-- 「働く方向けのメリット」を全面に出す
-- 求職者の不安を取り除く内容にする
-- STATSは「スタッフ定着率」「平均月収」「研修期間」「有給取得率」などを使う
-- 顧客の声ではなく「現役スタッフの声」を使う
-- FAQは「未経験でも応募できますか？」「研修制度は？」「シフトの融通は？」などを使う
-` : `
-このLPは【${lpPurpose}】を目的としたサービスLPです。
-- コピーは全てターゲット顧客向けに書くこと
-`}
+${ctx.isRecruit ? `## 【採用LP専用指示】
+求職者に向けた採用LPです。全コピーを求職者目線で書くこと。
+- 「お客様」は使わない → 「スタッフ」「仲間」「あなた」を使う
+- ファーストビューの権威バッジ: 「スタッフ定着率98%」「月平均残業20h以下」等
+- 問題提起: 求職者が今の職場に感じる不安・不満・限界
+- ベネフィット: 働きやすさ・成長・収入・プライベートの充実
+- Voiceは「現役スタッフの声」（入社年数・前職も記載）
+- 追従CTAの文言: 「まず話を聞くだけでもOK」などハードルを下げる` : `## 【サービスLP専用指示】
+「${targetAudience}」が抱える最大の痛み・不安・欲求から逆算し、
+Solution → Benefit → Evidenceの流れで「この会社だけが解決できる」という文脈を作る。`}
 
-## 使用する画像URL（必ず使用すること）
-- ヒーロー背景: ${heroImage}
-- セクション画像1: ${sectionImage1}
-- セクション画像2: ${sectionImage2}
-- 顔写真1: ${avatars[0]}
-- 顔写真2: ${avatars[1]}
-- 顔写真3: ${avatars[2]}
+## STATSセクション（カウントアップJSで演出）
+${stats.map(s => `- data-count="${s.n.replace(/[^0-9]/g, '')}" → "${s.n}${s.u} ${s.l}"`).join('\n')}
 
-## Google Fonts（必ず追加）
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
+## FAQの内容（FAQPage JSON-LDに全て含める）
+${faqs.map(([q, a], i) => `Q${i + 1}: ${q}\nA${i + 1}: ${a}`).join('\n')}
 
-## Intersection Observer JS（必ず実装）
-スクロールで表示された要素にis-visibleクラスを付与するJS。
-初期状態は opacity:0, transform:translateY(30px)
-is-visible付与時に transition: 0.6s ease でフェードイン
+## Schema.org JSON-LD（必須）
+型: ${schemaType} | 全FAQを含める | businessName: ${businessName}
 
-## カウントアップ JS（必ず実装）
-数値要素(data-count="500"など)をスクロール時に0からカウントアップ
-
-## JSON-LD スキーマ（業種に応じて選択）
-- サービス系: LocalBusiness + Service
-- 採用: JobPosting または Organization
-- 飲食: Restaurant + Menu
-- 医療: MedicalBusiness + Physician
-
-## 構成（この順番で実装）
-1. <head>: OGP完備 + Google Fonts + JSON-LD
-2. スティッキーヘッダー: backdrop-blur、スクロール時に背景が暗くなるJS付き
-3. ヒーロー: フルスクリーン、background-image、パララックス効果JS付き
-4. 信頼バッジ: カウントアップ数値4つ
-5. 課題提起: ターゲットの痛みを3つ（共感を呼ぶコピー）
-6. 解決策紹介: 画像左右レイアウト
-7. 選ばれる理由: 3カード（各々ユニークなアイコン・タイトル・説明）
-8. 実績・事例: 画像+数値
-9. ${ctx.isRecruit ? '現役スタッフの声' : 'お客様の声'}: 3名（顔写真・星評価・具体的な引用文）
-10. よくある質問: 5問（クリックで開閉、JS実装）
-11. 最終CTA: 強調デザイン + ${cvGoal === 'inquiry' || cvGoal === 'download' ? 'お名前・メール・メッセージフォーム' : '大きなCTAボタン'}
-12. フッター: コピーライト・プライバシー
-
-## SEO・構造化データ要件
-- <title>: ${businessName} | ${lpPurpose}（60字以内）
-- <meta name="description">: 120字以内の魅力的な説明
-- <meta property="og:*">: OGPタグ完備（og:title, og:description, og:image, og:type）
-- h1は1つだけ、h2でセクション構造化
-- alt属性を全画像に設定
-- <script type="application/ld+json">で${ctx.isRecruit ? 'JobPosting' : 'LocalBusiness + Service'} スキーマを埋め込む
-
-## CSSの絶対要件
-- h1, h2, h3, h4 に word-break: keep-all; overflow-wrap: break-word; line-break: strict; を必ず設定
-- .hero h1 に同様のword-break設定
-- .section-title に同様のword-break設定
-- font-size: clamp() でレスポンシブタイポグラフィを使用
-
-## 絶対要件
-- DOCTYPE htmlから始まる完全なHTMLのみ返す（説明不要）
-- <style>に全CSS記述
-- CSSカスタムプロパティ使用（:root定義）
-- @keyframes fadeInUp, fadeInLeft, scaleIn, pulse-ring のアニメーション
-- 画像は必ずobject-fit: coverで美しくトリミング
-- ボタンはbox-shadow + transitionでリッチに
-- モバイル対応（max-width 768px breakpoint）
-- フォームaction="${contactEmail ? `https://formspree.io/f/dummy" data-email="${contactEmail}` : 'https://formspree.io/f/dummy'}"
-- スムーズスクロール（scroll-behavior: smooth）
-- 合計1200行以上の高品質HTML`;
+## 実装チェックリスト（全て満たすこと）
+✓ <!DOCTYPE html>から始まる完全HTML（1500行以上）
+✓ <head>: OGP5タグ + Google Fonts CDN + JSON-LD
+✓ :rootにCSS変数定義
+✓ 全見出しにword-break:keep-all; overflow-wrap:break-word; line-break:strict
+✓ 全見出しにfont-size:clamp()
+✓ Intersection Observer JS（fadeInUp全セクション）
+✓ カウントアップJS（data-count属性）
+✓ 追従ヘッダー（backdrop-blur+scroll dark化）
+✓ 追従フッターCTA（fixed+bottom:0）
+✓ Bento UIグリッド（Benefitセクション）
+✓ FAQアコーディオンJS（height transition）
+✓ 全画像にalt+loading="lazy"+object-fit:cover
+✓ スマホ320px完全対応`;
 }
 
 // ─── High-quality fallback HTML ───────────────────────────────────────────────
