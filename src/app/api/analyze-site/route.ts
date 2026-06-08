@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
           rawDescription: '画像から高級感のあるデザインが読み取れます。',
         });
       }
-      const analysis = await analyzeWithAI({
+      try { const analysis = await analyzeWithAI({
         htmlSnippet: '',
         title: '',
         description: '',
@@ -219,6 +219,19 @@ export async function POST(request: NextRequest) {
         imageBase64: body.imageBase64,
       });
       return NextResponse.json(analysis);
+      } catch (aiErr) {
+        console.warn('AI image analysis failed, using fallback:', aiErr);
+        return NextResponse.json<ToneAnalysis>({
+          colors: { primary: '#2d2d2d', secondary: '#555555', accent: '#e84393', background: '#ffffff', text: '#222222' },
+          fonts: { headline: 'serif', body: 'sans-serif' },
+          styleKeywords: ['ラグジュアリー', 'エレガント'],
+          toneLabel: 'ラグジュアリー・エレガント',
+          industryHint: '美容・サロン',
+          businessNameHint: '',
+          catchphraseHint: '',
+          rawDescription: '画像から高級感のあるデザインが読み取れます。',
+        });
+      }
     }
 
     // ── URL path ──────────────────────────────────────────────────────────
@@ -246,16 +259,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(buildFallbackAnalysis(colors, fonts, title, description));
     }
 
-    const analysis = await analyzeWithAI({
-      htmlSnippet,
-      title,
-      description,
-      colors,
-      fonts,
-      isImage: false,
-    });
-
-    return NextResponse.json(analysis);
+    try {
+      const analysis = await analyzeWithAI({
+        htmlSnippet,
+        title,
+        description,
+        colors,
+        fonts,
+        isImage: false,
+      });
+      return NextResponse.json(analysis);
+    } catch (aiErr) {
+      console.warn('AI analysis failed, using fallback:', aiErr);
+      return NextResponse.json(buildFallbackAnalysis(colors, fonts, title, description));
+    }
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
