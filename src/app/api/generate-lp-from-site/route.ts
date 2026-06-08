@@ -25,6 +25,58 @@ const CV_LABELS: Record<LPInput['cvGoal'], string> = {
   reservation: '予約する',
 };
 
+// ─── LP purpose context detection ────────────────────────────────────────────
+
+function getLPContext(input: LPInput) {
+  const purpose = input.lpPurpose.toLowerCase();
+  const cv = input.cvGoal;
+
+  const isRecruit = /採用|求人|スタッフ|リクルート|働|雇用|求め|staff|recruit|hr|career/i.test(purpose);
+  const isPurchase = cv === 'purchase' || /購入|申込|商品|販売|buy|purchase/i.test(purpose);
+  const isSignup = cv === 'signup' || /登録|会員|sign|register/i.test(purpose);
+  const isReservation = cv === 'reservation' || /予約|reserve|booking/i.test(purpose);
+  const isDownload = cv === 'download' || /資料|ダウンロード|download/i.test(purpose);
+  const isLine = cv === 'line' || /line|ライン/i.test(purpose);
+
+  return { isRecruit, isPurchase, isSignup, isReservation, isDownload, isLine };
+}
+
+// ─── Per-selling-point unique description generator ──────────────────────────
+
+function generateFeatureDesc(
+  point: string,
+  context: ReturnType<typeof getLPContext>,
+  businessName: string,
+): string {
+  if (context.isRecruit) {
+    if (/在宅|テレワーク|リモート/i.test(point))
+      return `研修修了後は在宅勤務が可能。通勤ストレスゼロで、自分のペースで最大のパフォーマンスを発揮できます。`;
+    if (/週\d|シフト|勤務日数/i.test(point))
+      return `${point}の柔軟なシフト制。ライフスタイルに合わせて無理なく働けます。育児・介護中の方も安心です。`;
+    if (/研修|育成|スキル/i.test(point))
+      return `入社後3ヶ月の充実した研修プログラムで、未経験でも着実にスキルを習得。先輩スタッフが丁寧にサポートします。`;
+    if (/報酬|給与|賞与|インセンティブ/i.test(point))
+      return `業界平均を上回る報酬体系。成果に応じたインセンティブで、頑張りが正当に評価されます。`;
+    if (/環境|職場|雰囲気|チーム/i.test(point))
+      return `月平均残業8時間以下を実現。家族との時間や趣味を大切にしながら長く活躍できる職場環境です。`;
+    // default for recruit
+    return `${businessName}では${point}を徹底追求。スタッフ一人ひとりが最大限に活躍できる環境を整えています。`;
+  }
+
+  // Service LP defaults
+  if (/サポート|フォロー|サービス/i.test(point))
+    return `${businessName}ならではの手厚いサポート体制。お客様のご要望に細やかに対応し、高い満足度を実現しています。`;
+  if (/実績|経験|創業/i.test(point))
+    return `長年の実績が証明する確かな技術と信頼。多くのお客様から選ばれ続ける理由がここにあります。`;
+  if (/価格|料金|コスト|安|安心/i.test(point))
+    return `明確な料金体系で追加費用なし。高品質なサービスをリーズナブルな価格でご提供しています。`;
+  if (/スピード|迅速|即日|翌日/i.test(point))
+    return `ご依頼から最短即日対応。スピーディーな対応でお客様のビジネスをスムーズにサポートします。`;
+
+  // Generic default
+  return `${point}を徹底追求。${businessName}だからこそ実現できる高い水準を維持し、お客様に最高の体験をお届けします。`;
+}
+
 // ─── Image resolution: site images → Unsplash → Picsum ──────────────────────
 
 const UNSPLASH_KEYWORDS: Record<string, string[]> = {
@@ -38,6 +90,21 @@ const UNSPLASH_KEYWORDS: Record<string, string[]> = {
   it: ['technology office', 'software development', 'digital innovation', 'coding'],
   construction: ['construction architecture', 'modern building', 'engineering'],
   retail: ['retail shop', 'boutique store', 'shopping', 'product display'],
+  cleaning: ['house cleaning', 'clean home interior', 'professional cleaning', 'spotless room'],
+  wedding: ['wedding ceremony', 'bridal', 'wedding flowers', 'wedding venue'],
+  travel: ['travel destination', 'tourism', 'vacation resort', 'adventure travel'],
+  insurance: ['financial planning', 'insurance office', 'business meeting', 'professional advisor'],
+  accounting: ['accounting office', 'financial documents', 'business professional', 'tax consulting'],
+  childcare: ['childcare', 'kids playing', 'kindergarten', 'happy children'],
+  welfare: ['elderly care', 'nursing care', 'healthcare elderly', 'caregiving'],
+  agriculture: ['organic farm', 'fresh vegetables', 'agriculture', 'food production'],
+  automotive: ['car dealership', 'luxury car', 'automotive', 'vehicle service'],
+  event: ['event venue', 'concert stage', 'party celebration', 'entertainment'],
+  photography: ['photography studio', 'camera professional', 'photo shoot', 'cinematography'],
+  interior: ['interior design', 'modern living room', 'home renovation', 'architecture interior'],
+  hr: ['business interview', 'team recruitment', 'HR office', 'job career'],
+  marketing: ['marketing strategy', 'advertising agency', 'digital marketing', 'creative agency'],
+  consulting: ['business consulting', 'strategy meeting', 'professional advisor', 'corporate office'],
   other: ['business team', 'professional office', 'modern workspace', 'success'],
 };
 
@@ -68,6 +135,35 @@ function resolveImages(input: LPInput): string[] {
 
 function getAvatarUrl(n: number): string {
   return `https://i.pravatar.cc/80?img=${n}`;
+}
+
+// ─── Icon set selection ───────────────────────────────────────────────────────
+
+function getIconSet(context: ReturnType<typeof getLPContext>, industry?: string): string[] {
+  if (context.isRecruit) return ['🌱', '⏰', '💰', '🏆', '🤝'];
+
+  switch (industry) {
+    case 'beauty': return ['✨', '💆', '🌸', '👑', '💎'];
+    case 'cleaning': return ['🧹', '✨', '🏠', '⭐', '🔧'];
+    case 'medical': return ['🏥', '💊', '🩺', '❤️', '✅'];
+    case 'restaurant': return ['🍽️', '👨‍🍳', '⭐', '🌿', '🎉'];
+    case 'fitness': return ['💪', '🏃', '⚡', '🎯', '🏆'];
+    case 'legal': return ['⚖️', '📜', '🛡️', '✅', '🤝'];
+    case 'realestate': return ['🏠', '🔑', '📍', '⭐', '🌟'];
+    case 'education': return ['📚', '🎓', '💡', '✏️', '🏆'];
+    case 'it': return ['💻', '🚀', '⚡', '🔧', '🌐'];
+    case 'construction': return ['🏗️', '🔨', '🏠', '⭐', '✅'];
+    case 'wedding': return ['💍', '💒', '🌸', '💐', '✨'];
+    case 'travel': return ['✈️', '🗺️', '🌏', '🏖️', '⭐'];
+    case 'childcare': return ['👶', '🌈', '🎠', '❤️', '🌟'];
+    case 'welfare': return ['❤️', '🤝', '🏥', '😊', '✅'];
+    case 'photography': return ['📸', '🎬', '✨', '🎯', '🌟'];
+    case 'interior': return ['🏠', '🛋️', '✨', '🎨', '⭐'];
+    case 'hr': return ['👥', '🤝', '💼', '🌱', '🏆'];
+    case 'marketing': return ['📈', '🎯', '💡', '🚀', '⭐'];
+    case 'consulting': return ['💡', '📊', '🤝', '🏆', '🚀'];
+    default: return ['⭐', '🚀', '💡', '🎯', '🔥'];
+  }
 }
 
 // ─── AI generation ────────────────────────────────────────────────────────────
@@ -102,7 +198,12 @@ const SYSTEM_PROMPT = `あなたは世界最高水準のウェブデザイナー
 - ブランドカラーを活かした美しいグラデーション
 - 余白を大きく取ったプレミアム感のあるレイアウト
 - 数字・実績の視覚的な強調
-- モバイルファースト完全レスポンシブ`;
+- モバイルファースト完全レスポンシブ
+- 見出しテキストはword-break: keep-all; overflow-wrap: break-wordを必ず設定（日本語の不自然な改行を防ぐ）
+- LP目的に完全に合致したコピーを書くこと（採用LPなら求職者向け、サービスLPなら顧客向け）
+- 各特徴カードの説明文は必ずユニークにすること（コピペ禁止）
+- JSON-LDスキーマ（LocalBusiness/Service/JobPosting等）を必ず含めること
+- OGPメタタグを完備すること`;
 
 function buildPrompt(input: LPInput, images: string[]): string {
   const { tone, businessName, lpPurpose, targetAudience, sellingPoints, catchphraseHint, cvGoal, cvButtonText, cvUrl, contactEmail } = input;
@@ -113,6 +214,7 @@ function buildPrompt(input: LPInput, images: string[]): string {
   const sectionImage2 = images[2] ?? images[0];
   const sp = sellingPoints.filter(Boolean);
   const avatars = [1, 5, 12].map(getAvatarUrl);
+  const ctx = getLPContext(input);
 
   return `以下の仕様で、完全な高品質ランディングページHTMLを生成してください。
 
@@ -139,6 +241,24 @@ ${sp.map((p, i) => `  ${i + 1}. ${p}`).join('\n')}
 - CTAボタン: ${cvAction}
 ${contactEmail ? `- 受信メール: ${contactEmail}` : ''}
 
+## 重要：LP目的に基づくコピー指定
+LP目的: ${lpPurpose}
+CVゴール: ${cvLabel}
+
+${ctx.isRecruit ? `
+このLPは【採用・求人LP】です。
+- コピーは全て求職者向けに書くこと
+- 「お客様」という言葉は使わない
+- 「働く方向けのメリット」を全面に出す
+- 求職者の不安を取り除く内容にする
+- STATSは「スタッフ定着率」「平均月収」「研修期間」「有給取得率」などを使う
+- 顧客の声ではなく「現役スタッフの声」を使う
+- FAQは「未経験でも応募できますか？」「研修制度は？」「シフトの融通は？」などを使う
+` : `
+このLPは【${lpPurpose}】を目的としたサービスLPです。
+- コピーは全てターゲット顧客向けに書くこと
+`}
+
 ## 使用する画像URL（必ず使用すること）
 - ヒーロー背景: ${heroImage}
 - セクション画像1: ${sectionImage1}
@@ -155,10 +275,23 @@ ${contactEmail ? `- 受信メール: ${contactEmail}` : ''}
 4. **課題提起** — ターゲットの悩みを3つ（チェックマーク付き）。右にセクション画像
 5. **ソリューション・3つの強み** — アイコン（絵文字）＋訴求ポイントをカードで。ホバーでリフトアップ
 6. **実績画像セクション** — セクション画像2を使った画像+テキスト左右レイアウト
-7. **お客様の声** — 顔写真3枚。星5つ。引用文。名前・属性。カード形式
+7. **${ctx.isRecruit ? '現役スタッフの声' : 'お客様の声'}** — 顔写真3枚。星5つ。引用文。名前・属性。カード形式
 8. **FAQ** — 5項目。クリックで開閉（CSS onlyまたはJS）
 9. **お問い合わせ / CTAセクション** — アクセントカラー背景。${cvGoal === 'inquiry' || cvGoal === 'download' ? 'お名前・メール・メッセージフォーム' : '大きなCTAボタン'}
 10. **フッター** — コピーライト
+
+## SEO・構造化データ要件
+- <title>: ${businessName} | ${lpPurpose}（60字以内）
+- <meta name="description">: 120字以内の魅力的な説明
+- <meta property="og:*">: OGPタグ完備（og:title, og:description, og:image, og:type）
+- h1は1つだけ、h2でセクション構造化
+- alt属性を全画像に設定
+- <script type="application/ld+json">でLocalBusiness または ${ctx.isRecruit ? 'JobPosting' : 'Service'} スキーマを埋め込む
+
+## CSSの絶対要件
+- h1, h2, h3, h4 に word-break: keep-all; overflow-wrap: break-word; line-break: strict; を必ず設定
+- .hero h1 に同様のword-break設定
+- .section-title に同様のword-break設定
 
 ## 絶対要件
 - DOCTYPE htmlから始まる完全なHTMLのみ返す（説明不要）
@@ -186,30 +319,107 @@ function buildFallbackLP(input: LPInput): string {
   const cvAction = cvUrl ? `href="${cvUrl}" target="_blank"` : cvGoal === 'tel' ? 'href="tel:"' : 'href="#contact"';
   const sp = [...sellingPoints.filter(Boolean), '圧倒的な実績と信頼', '充実したアフターサポート', '業界最高水準の品質'].slice(0, 3);
   const catch_ = catchphraseHint || `${businessName}が、あなたの未来を変える`;
+  const ctx = getLPContext(input);
+  const icons = getIconSet(ctx, input.industry);
 
   const avatars = [1, 5, 12, 25, 33, 45].map(n => `https://i.pravatar.cc/80?img=${n}`);
 
-  const spIcons = ['✦', '◆', '★'];
+  // ─ Pain points based on LP context ─
+  const painPoints = ctx.isRecruit
+    ? [
+        '今の職場に将来性を感じない・キャリアアップが見えない',
+        'スキルアップができる環境・研修制度が整っていない',
+        'プライベートも大切にしながら無理なく働きたい',
+      ]
+    : [
+        `${targetAudience.split('・')[0] || 'お客様'}の課題を根本から解決`,
+        '時間・コスト・品質の三拍子を実現',
+        '専門チームが最初から最後まで伴走',
+      ];
 
-  const painPoints = [
-    `${targetAudience.split('・')[0] || 'お客様'}の課題を根本から解決`,
-    '時間・コスト・品質の三拍子を実現',
-    '専門チームが最初から最後まで伴走',
-  ];
+  // ─ Testimonials based on LP context ─
+  const testimonials = ctx.isRecruit
+    ? [
+        { name: '田中 愛様', role: '入社2年目・前職：アパレル', text: `未経験からのスタートでしたが、充実した研修制度のおかげで3ヶ月で一人立ちできました。${businessName}に転職して本当に良かったです。`, img: avatars[0], rating: 5 },
+        { name: '鈴木 健太様', role: '入社5年目・チームリーダー', text: '残業が少なく、プライベートも大切にしながら働けています。スキルアップのサポートも手厚く、やりがいを感じながら毎日働けています。', img: avatars[1], rating: 5 },
+        { name: '山田 花子様', role: '入社1年目・子育て中', text: '育児中でもシフトの融通が利くので安心して働けます。職場の雰囲気もよく、チームの仲間がいつもサポートしてくれます。', img: avatars[2], rating: 5 },
+      ]
+    : [
+        { name: '田中 美咲様', role: '30代・会社員', text: `${businessName}に相談してから、毎日の生活がガラリと変わりました。こんなに結果が出るとは思っていなかったので本当に感謝しています。`, img: avatars[0], rating: 5 },
+        { name: '鈴木 健太様', role: '40代・経営者', text: '最初は半信半疑でしたが、プロのサポートで確実に成果が出ています。もっと早く相談すれば良かったと思うくらいです。', img: avatars[1], rating: 5 },
+        { name: '山田 花子様', role: '20代・フリーランス', text: `他社と比較しましたが、${businessName}の丁寧さと専門性は別格でした。コスパも最高で今後もお願いしたいです。`, img: avatars[2], rating: 5 },
+      ];
 
-  const testimonials = [
-    { name: '田中 美咲様', role: '30代・会社員', text: `${businessName}に相談してから、毎日の生活がガラリと変わりました。こんなに結果が出るとは思っていなかったので本当に感謝しています。`, img: avatars[0], rating: 5 },
-    { name: '鈴木 健太様', role: '40代・経営者', text: '最初は半信半疑でしたが、プロのサポートで確実に成果が出ています。もっと早く相談すれば良かったと思うくらいです。', img: avatars[1], rating: 5 },
-    { name: '山田 花子様', role: '20代・フリーランス', text: `他社と比較しましたが、${businessName}の丁寧さと専門性は別格でした。コスパも最高で今後もお願いしたいです。`, img: avatars[2], rating: 5 },
-  ];
+  // ─ FAQs based on LP context ─
+  const faqs = ctx.isRecruit
+    ? [
+        { q: '未経験でも応募できますか？', a: 'はい、未経験の方も大歓迎です。入社後の研修プログラムで基礎からしっかり学べる環境を整えていますので、安心してご応募ください。' },
+        { q: '研修制度について教えてください', a: '入社後3ヶ月間、専任のトレーナーがマンツーマンで指導します。業務に必要な知識・スキルを体系的に習得できます。' },
+        { q: 'シフトの融通は利きますか？', a: 'はい、週3日〜のシフト制です。育児・介護・副業との両立も可能です。まずはご希望をお聞かせください。' },
+        { q: '残業はどのくらいありますか？', a: '月平均残業時間は8時間程度です。ワークライフバランスを大切にしており、残業削減に積極的に取り組んでいます。' },
+        { q: '応募から採用までの流れは？', a: 'エントリー→書類選考（3営業日以内にご連絡）→面接（1〜2回）→内定のステップです。お気軽にご応募ください。' },
+      ]
+    : [
+        { q: '初回相談は無料ですか？', a: 'はい、初回のご相談・お見積りは完全無料です。まずはお気軽にお問い合わせください。' },
+        { q: `${lpPurpose}に関して何から始めればいいですか？`, a: 'まずはお問い合わせフォームよりご連絡ください。専任スタッフが現状をお伺いし、最適なプランをご提案します。' },
+        { q: '対応エリアはどこですか？', a: 'オンラインでの対応も可能ですので、全国どこからでもご相談いただけます。' },
+        { q: '契約後にキャンセルはできますか？', a: 'はい、キャンセルポリシーに従って柔軟に対応しております。詳細はお問い合わせください。' },
+        { q: '実績や事例を見ることはできますか？', a: 'はい、ご要望に応じて事例集をご共有しております。お問い合わせの際にお申し付けください。' },
+      ];
 
-  const faqs = [
-    { q: '初回相談は無料ですか？', a: 'はい、初回のご相談・お見積りは完全無料です。まずはお気軽にお問い合わせください。' },
-    { q: `${lpPurpose}に関して何から始めればいいですか？`, a: 'まずはお問い合わせフォームよりご連絡ください。専任スタッフが現状をお伺いし、最適なプランをご提案します。' },
-    { q: '対応エリアはどこですか？', a: 'オンラインでの対応も可能ですので、全国どこからでもご相談いただけます。' },
-    { q: '契約後にキャンセルはできますか？', a: 'はい、キャンセルポリシーに従って柔軟に対応しております。詳細はお問い合わせください。' },
-    { q: '実績や事例を見ることはできますか？', a: 'はい、ご要望に応じて事例集をご共有しております。お問い合わせの際にお申し付けください。' },
-  ];
+  // ─ Stats based on LP context ─
+  const statsHTML = ctx.isRecruit
+    ? `<div class="stat-item anim-up delay-1">
+        <span class="stat-num">98<span class="stat-unit">%</span></span>
+        <span class="stat-label">スタッフ定着率</span>
+      </div>
+      <div class="stat-item anim-up delay-2">
+        <span class="stat-num">8<span class="stat-unit">h</span></span>
+        <span class="stat-label">月平均残業時間</span>
+      </div>
+      <div class="stat-item anim-up delay-3">
+        <span class="stat-num">3<span class="stat-unit">ヶ月</span></span>
+        <span class="stat-label">充実の研修期間</span>
+      </div>
+      <div class="stat-item anim-up delay-4">
+        <span class="stat-num">85<span class="stat-unit">%</span></span>
+        <span class="stat-label">有給取得率</span>
+      </div>`
+    : `<div class="stat-item anim-up delay-1">
+        <span class="stat-num">500<span class="stat-unit">+</span></span>
+        <span class="stat-label">累計導入実績</span>
+      </div>
+      <div class="stat-item anim-up delay-2">
+        <span class="stat-num">98<span class="stat-unit">%</span></span>
+        <span class="stat-label">顧客満足度</span>
+      </div>
+      <div class="stat-item anim-up delay-3">
+        <span class="stat-num">10<span class="stat-unit">年</span></span>
+        <span class="stat-label">業界経験</span>
+      </div>
+      <div class="stat-item anim-up delay-4">
+        <span class="stat-num">24<span class="stat-unit">h</span></span>
+        <span class="stat-label">サポート対応</span>
+      </div>`;
+
+  // ─ Hero sub text based on LP context ─
+  const heroSubText = ctx.isRecruit
+    ? `${businessName}で、あなたの可能性を広げませんか。<br />未経験歓迎・充実の研修制度で安心してスタートできます。`
+    : `${targetAudience}に向けた、${businessName}ならではのアプローチ。<br />あなたの悩みを根本から解決します。`;
+
+  const heroTrustItems = ctx.isRecruit
+    ? ['未経験歓迎', '研修制度充実', '残業少なめ']
+    : ['無料相談受付中', '実績500社以上', '満足度98%'];
+
+  const testimonialsTitle = ctx.isRecruit ? '現役スタッフの声' : 'お客様の声';
+  const testimonialsLead = ctx.isRecruit
+    ? '実際に働くスタッフからのリアルな声をご紹介します'
+    : '実際にご利用いただいたお客様からの声をご紹介します';
+
+  const contactTitle = ctx.isRecruit ? 'まずはお気軽に<br />ご応募ください' : 'まずは無料で<br />ご相談ください';
+  const contactLead = ctx.isRecruit
+    ? `${businessName}のスタッフ一同が、あなたのご応募をお待ちしています。疑問・不安はなんでもお気軽にどうぞ。`
+    : `${businessName}の専任スタッフが、あなたの状況に合わせて丁寧にご対応します。`;
 
   const formHTML = (cvGoal === 'inquiry' || cvGoal === 'download')
     ? `<form action="https://formspree.io/f/dummy" method="POST" class="contact-form">
@@ -219,13 +429,13 @@ function buildFallbackLP(input: LPInput): string {
           <div class="form-group"><label>メールアドレス <span class="req">*</span></label><input type="email" name="email" placeholder="your@email.com" required /></div>
         </div>
         <div class="form-group"><label>電話番号</label><input type="tel" name="tel" placeholder="090-0000-0000" /></div>
-        <div class="form-group"><label>お問い合わせ内容 <span class="req">*</span></label><textarea name="message" rows="5" placeholder="ご質問・ご要望をお気軽にどうぞ" required></textarea></div>
+        <div class="form-group"><label>${ctx.isRecruit ? 'ご希望・メッセージ' : 'お問い合わせ内容'} <span class="req">*</span></label><textarea name="message" rows="5" placeholder="${ctx.isRecruit ? '希望勤務日・志望動機などをお気軽にどうぞ' : 'ご質問・ご要望をお気軽にどうぞ'}" required></textarea></div>
         <button type="submit" class="btn-primary btn-xl">${cvButtonText} →</button>
         <p class="form-note">個人情報は適切に管理し、第三者に提供することはありません。</p>
       </form>`
     : `<div class="cta-big">
         <a ${cvAction} class="btn-primary btn-xl">${cvButtonText} →</a>
-        <p class="cta-sub">まずはお気軽にご相談ください。担当者が迅速に対応します。</p>
+        <p class="cta-sub">${ctx.isRecruit ? 'まずはお気軽にご応募ください。担当者が迅速にご連絡します。' : 'まずはお気軽にご相談ください。担当者が迅速に対応します。'}</p>
       </div>`;
 
   return `<!DOCTYPE html>
@@ -235,6 +445,18 @@ function buildFallbackLP(input: LPInput): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${businessName} | ${lpPurpose}</title>
   <meta name="description" content="${businessName}の${lpPurpose}。${targetAudience}に向けたサービスです。" />
+  <meta property="og:title" content="${businessName} | ${lpPurpose}" />
+  <meta property="og:description" content="${businessName}の${lpPurpose}。${targetAudience}に向けたサービスです。" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="${heroImg}" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "${ctx.isRecruit ? 'JobPosting' : 'LocalBusiness'}",
+    "name": "${businessName}",
+    "description": "${lpPurpose}"
+  }
+  </script>
   <style>
     /* ── Variables ── */
     :root {
@@ -270,6 +492,21 @@ function buildFallbackLP(input: LPInput): string {
     a { text-decoration: none; color: inherit; }
     ul { list-style: none; }
 
+    /* ── Japanese text line break fix ── */
+    h1, h2, h3, h4 {
+      word-break: keep-all;
+      overflow-wrap: break-word;
+      line-break: strict;
+    }
+    .hero h1 {
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+    .section-title {
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+
     /* ── Layout ── */
     .container { max-width: var(--max-w); margin: 0 auto; padding: 0 32px; }
     .section { padding: var(--section-py) 0; }
@@ -284,7 +521,7 @@ function buildFallbackLP(input: LPInput): string {
     .section-badge::before { content: ''; display: block; width: 24px; height: 2px; background: var(--accent); }
     h2.section-title {
       font-family: var(--font-head); font-size: clamp(1.75rem, 3.5vw, 2.75rem); font-weight: 900;
-      color: var(--text); line-height: 1.2; margin-bottom: 16px;
+      color: var(--text); line-height: 1.3; margin-bottom: 16px;
     }
     .section-lead { font-size: 1.05rem; color: var(--gray-500); max-width: 560px; margin-bottom: 56px; line-height: 1.8; }
 
@@ -399,8 +636,9 @@ function buildFallbackLP(input: LPInput): string {
     .hero h1 {
       font-family: var(--font-head);
       font-size: clamp(2.25rem, 6vw, 4.25rem);
-      font-weight: 900; color: var(--white); line-height: 1.15;
+      font-weight: 900; color: var(--white); line-height: 1.3;
       margin-bottom: 24px; letter-spacing: -0.02em;
+      word-break: keep-all; overflow-wrap: break-word;
     }
     .hero h1 .accent-text {
       background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, var(--white)));
@@ -457,7 +695,7 @@ function buildFallbackLP(input: LPInput): string {
     }
     .problem-item:hover { box-shadow: var(--shadow-md); transform: translateX(4px); }
     .problem-icon { font-size: 1.5rem; flex-shrink: 0; }
-    .problem-text strong { display: block; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+    .problem-text strong { display: block; font-weight: 700; margin-bottom: 4px; color: var(--text); word-break: keep-all; overflow-wrap: break-word; }
     .problem-text span { font-size: 0.9rem; color: var(--gray-500); }
 
     /* ── Features ── */
@@ -480,7 +718,7 @@ function buildFallbackLP(input: LPInput): string {
       display: flex; align-items: center; justify-content: center;
       font-size: 1.75rem; margin-bottom: 20px;
     }
-    .feature-card h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 10px; color: var(--text); }
+    .feature-card h3 { font-size: 1.15rem; font-weight: 800; margin-bottom: 10px; color: var(--text); word-break: keep-all; overflow-wrap: break-word; }
     .feature-card p { font-size: 0.9rem; color: var(--gray-500); line-height: 1.7; }
     .feature-num {
       position: absolute; top: 20px; right: 24px;
@@ -538,6 +776,7 @@ function buildFallbackLP(input: LPInput): string {
       padding: 20px 24px; cursor: pointer; font-weight: 700; font-size: 0.95rem;
       background: var(--white); user-select: none; list-style: none;
       transition: background 0.15s;
+      word-break: keep-all; overflow-wrap: break-word;
     }
     .faq-item summary::-webkit-details-marker { display: none; }
     .faq-item summary:hover { background: var(--gray-50); }
@@ -603,7 +842,7 @@ function buildFallbackLP(input: LPInput): string {
   <div class="header-logo">${businessName}</div>
   <nav class="header-nav">
     <a href="#features">特長</a>
-    <a href="#testimonials">お客様の声</a>
+    <a href="#testimonials">${ctx.isRecruit ? 'スタッフの声' : 'お客様の声'}</a>
     <a href="#faq">FAQ</a>
   </nav>
   <div class="header-cta">
@@ -620,15 +859,13 @@ function buildFallbackLP(input: LPInput): string {
     <h1 class="anim-up delay-1">
       ${catch_.includes('、') ? catch_.replace('、', '<br /><span class="accent-text">') + '</span>' : catch_}
     </h1>
-    <p class="hero-sub anim-up delay-2">${targetAudience}に向けた、${businessName}ならではのアプローチ。<br />あなたの悩みを根本から解決します。</p>
+    <p class="hero-sub anim-up delay-2">${heroSubText}</p>
     <div class="hero-btns anim-up delay-3">
       <a ${cvAction} class="btn-primary btn-xl">${cvButtonText} →</a>
       <a href="#features" class="btn-outline btn-xl">詳しく見る</a>
     </div>
     <div class="hero-trust anim-up delay-4">
-      <span class="hero-trust-item">無料相談受付中</span>
-      <span class="hero-trust-item">実績500社以上</span>
-      <span class="hero-trust-item">満足度98%</span>
+      ${heroTrustItems.map(item => `<span class="hero-trust-item">${item}</span>`).join('')}
     </div>
   </div>
   <div class="scroll-arrow">↓</div>
@@ -638,22 +875,7 @@ function buildFallbackLP(input: LPInput): string {
 <section class="stats-bar">
   <div class="container">
     <div class="stats-grid">
-      <div class="stat-item anim-up delay-1">
-        <span class="stat-num">500<span class="stat-unit">+</span></span>
-        <span class="stat-label">累計導入実績</span>
-      </div>
-      <div class="stat-item anim-up delay-2">
-        <span class="stat-num">98<span class="stat-unit">%</span></span>
-        <span class="stat-label">顧客満足度</span>
-      </div>
-      <div class="stat-item anim-up delay-3">
-        <span class="stat-num">10<span class="stat-unit">年</span></span>
-        <span class="stat-label">業界経験</span>
-      </div>
-      <div class="stat-item anim-up delay-4">
-        <span class="stat-num">24<span class="stat-unit">h</span></span>
-        <span class="stat-label">サポート対応</span>
-      </div>
+      ${statsHTML}
     </div>
   </div>
 </section>
@@ -667,14 +889,14 @@ function buildFallbackLP(input: LPInput): string {
       </div>
       <div class="anim-right">
         <div class="section-badge">PROBLEM</div>
-        <h2 class="section-title">こんなお悩み、<br />ありませんか？</h2>
-        <p class="section-lead">${targetAudience}の多くが抱える課題を、${businessName}は確実に解決します。</p>
+        <h2 class="section-title">${ctx.isRecruit ? 'こんなお悩みを<br />抱えていませんか？' : 'こんなお悩み、<br />ありませんか？'}</h2>
+        <p class="section-lead">${ctx.isRecruit ? `多くの求職者が抱える不安を、${businessName}は解決します。` : `${targetAudience}の多くが抱える課題を、${businessName}は確実に解決します。`}</p>
         <ul class="problem-list">
           ${painPoints.map((p, i) => `<li class="problem-item anim-up delay-${i + 2}">
             <div class="problem-icon">${['😔', '😟', '😤'][i]}</div>
             <div class="problem-text">
               <strong>${p}</strong>
-              <span>一人で悩まず、専門家に相談しましょう</span>
+              <span>${ctx.isRecruit ? 'そのお悩み、私たちが解決します' : '一人で悩まず、専門家に相談しましょう'}</span>
             </div>
           </li>`).join('')}
         </ul>
@@ -688,16 +910,20 @@ function buildFallbackLP(input: LPInput): string {
   <div class="container">
     <div style="text-align:center; max-width:600px; margin:0 auto 56px;">
       <div class="section-badge anim-up">FEATURES</div>
-      <h2 class="section-title anim-up delay-1">${businessName}が選ばれる<br />3つの理由</h2>
-      <p class="section-lead anim-up delay-2" style="margin:0 auto">${targetAudience}のニーズに応え続ける、私たちの強みをご紹介します。</p>
+      <h2 class="section-title anim-up delay-1">${ctx.isRecruit ? `${businessName}で働く<br />3つの魅力` : `${businessName}が選ばれる<br />3つの理由`}</h2>
+      <p class="section-lead anim-up delay-2" style="margin:0 auto">${ctx.isRecruit ? `スタッフが長く活躍できる、${businessName}ならではの環境をご紹介します。` : `${targetAudience}のニーズに応え続ける、私たちの強みをご紹介します。`}</p>
     </div>
     <div class="features-grid">
-      ${sp.map((point, i) => `<div class="feature-card anim-up delay-${i + 2}">
+      ${sp.map((point, i) => {
+        const title = point.split('：')[0] || point.slice(0, 20);
+        const desc = generateFeatureDesc(point, ctx, businessName);
+        return `<div class="feature-card anim-up delay-${i + 2}">
         <div class="feature-num">0${i + 1}</div>
-        <div class="feature-icon-wrap">${spIcons[i]}</div>
-        <h3>${point.split('：')[0] || point.slice(0, 20)}</h3>
-        <p>${point.includes('：') ? point.split('：').slice(1).join('：') : point + 'を徹底的に追求し、お客様の期待を超える成果をお届けします。'}</p>
-      </div>`).join('')}
+        <div class="feature-icon-wrap">${icons[i] ?? '⭐'}</div>
+        <h3>${title}</h3>
+        <p>${desc}</p>
+      </div>`;
+      }).join('')}
     </div>
   </div>
 </section>
@@ -712,11 +938,10 @@ function buildFallbackLP(input: LPInput): string {
       <div class="text-content anim-right">
         <div class="section-badge">WHY US</div>
         <h2 class="section-title">なぜ${businessName}が<br />最適な選択なのか</h2>
-        <p style="font-size:0.95rem; color:var(--gray-700); line-height:1.9;">私たちは${targetAudience}の課題に真剣に向き合い、一人ひとりに最適なソリューションを提供し続けています。単なる${lpPurpose}に留まらず、長期的な関係を大切にしています。</p>
+        <p style="font-size:0.95rem; color:var(--gray-700); line-height:1.9;">${ctx.isRecruit ? `私たちは働くスタッフ一人ひとりを大切にしています。無理なく長く活躍できる環境づくりに全力で取り組んでいます。` : `私たちは${targetAudience}の課題に真剣に向き合い、一人ひとりに最適なソリューションを提供し続けています。単なる${lpPurpose}に留まらず、長期的な関係を大切にしています。`}</p>
         <ul>
           ${sp.map(p => `<li>${p.split('：')[0] || p.slice(0, 30)}</li>`).join('')}
-          <li>充実したアフターサポート体制</li>
-          <li>明確な料金体系・追加費用なし</li>
+          ${ctx.isRecruit ? '<li>充実した福利厚生・社内制度</li><li>明確なキャリアパス</li>' : '<li>充実したアフターサポート体制</li><li>明確な料金体系・追加費用なし</li>'}
         </ul>
         <div><a ${cvAction} class="btn-primary">${cvButtonText} →</a></div>
       </div>
@@ -729,8 +954,8 @@ function buildFallbackLP(input: LPInput): string {
   <div class="container">
     <div style="text-align:center; max-width:600px; margin:0 auto 56px;">
       <div class="section-badge anim-up">TESTIMONIALS</div>
-      <h2 class="section-title anim-up delay-1">お客様の声</h2>
-      <p class="section-lead anim-up delay-2" style="margin:0 auto">実際にご利用いただいたお客様からの声をご紹介します</p>
+      <h2 class="section-title anim-up delay-1">${testimonialsTitle}</h2>
+      <p class="section-lead anim-up delay-2" style="margin:0 auto">${testimonialsLead}</p>
     </div>
     <div class="testimonials-grid">
       ${testimonials.map((t, i) => `<div class="testimonial-card anim-up delay-${i + 2}">
@@ -768,8 +993,8 @@ function buildFallbackLP(input: LPInput): string {
 <section class="contact-section" id="contact">
   <div class="contact-inner">
     <div class="section-badge anim-up">${cvLabel.toUpperCase()}</div>
-    <h2 class="section-title anim-up delay-1" style="color:var(--white)">まずは無料で<br />ご相談ください</h2>
-    <p class="section-lead anim-up delay-2">${businessName}の専任スタッフが、あなたの状況に合わせて丁寧にご対応します。</p>
+    <h2 class="section-title anim-up delay-1" style="color:var(--white)">${contactTitle}</h2>
+    <p class="section-lead anim-up delay-2">${contactLead}</p>
     <div class="anim-up delay-3">
       ${formHTML}
     </div>

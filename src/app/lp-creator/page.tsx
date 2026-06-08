@@ -1,15 +1,43 @@
 'use client';
 
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Zap, Globe, Image as ImageIcon, Upload, ArrowRight, ArrowLeft,
   CheckCircle, AlertCircle, RefreshCw, Download, Palette,
-  Sparkles, Target, MousePointerClick, Eye,
+  Sparkles, Target, MousePointerClick, Eye, Code, Save,
+  Trash2, ChevronDown, ChevronUp, Image as BannerIcon, Copy,
 } from 'lucide-react';
 import { useLPCreatorStore, type LPCreatorStep } from '@/lib/lp-creator-store';
 import type { ToneAnalysis } from '@/app/api/analyze-site/route';
 import type { LPInput } from '@/app/api/generate-lp-from-site/route';
+
+// ─── Archive types ───────────────────────────────────────────────────────────
+
+interface ArchivedLP {
+  id: string;
+  businessName: string;
+  lpPurpose: string;
+  industry: string;
+  html: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const ARCHIVE_KEY = 'webcre_archives';
+
+function loadArchives(): ArchivedLP[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    return JSON.parse(localStorage.getItem(ARCHIVE_KEY) ?? '[]') as ArchivedLP[];
+  } catch {
+    return [];
+  }
+}
+
+function saveArchives(list: ArchivedLP[]) {
+  localStorage.setItem(ARCHIVE_KEY, JSON.stringify(list));
+}
 
 // ─── Step indicator ─────────────────────────────────────────────────────────
 
@@ -288,13 +316,28 @@ const INDUSTRY_OPTIONS = [
   { value: 'beauty', label: '美容・サロン' },
   { value: 'medical', label: '医療・クリニック' },
   { value: 'restaurant', label: '飲食・レストラン' },
-  { value: 'fitness', label: 'フィットネス' },
+  { value: 'fitness', label: 'フィットネス・ジム' },
   { value: 'legal', label: '法律・士業' },
   { value: 'realestate', label: '不動産' },
   { value: 'education', label: '教育・スクール' },
   { value: 'it', label: 'IT・テクノロジー' },
   { value: 'construction', label: '建設・工務店' },
   { value: 'retail', label: '小売・ショップ' },
+  { value: 'cleaning', label: 'ハウスクリーニング' },
+  { value: 'wedding', label: 'ウェディング' },
+  { value: 'travel', label: '旅行・観光' },
+  { value: 'insurance', label: '保険・金融' },
+  { value: 'accounting', label: '税理士・会計' },
+  { value: 'childcare', label: '保育・子育て' },
+  { value: 'welfare', label: '福祉・介護' },
+  { value: 'agriculture', label: '農業・食品' },
+  { value: 'automotive', label: '自動車・バイク' },
+  { value: 'event', label: 'イベント・エンタメ' },
+  { value: 'photography', label: '写真・映像' },
+  { value: 'interior', label: 'インテリア・リフォーム' },
+  { value: 'hr', label: '人材・採用・HR' },
+  { value: 'marketing', label: 'マーケティング・広告' },
+  { value: 'consulting', label: 'コンサルティング' },
   { value: 'other', label: 'その他' },
 ];
 
@@ -585,16 +628,52 @@ function Step4() {
   );
 }
 
+// ─── Banner types ─────────────────────────────────────────────────────────────
+
+interface BannerResult {
+  id: string;
+  name: string;
+  w: number;
+  h: number;
+  platform: string;
+  html: string;
+}
+
 // ─── Step 5: Preview ────────────────────────────────────────────────────────
 
 function Step5() {
-  const { generatedHtml, businessName, setStep, setGenerateLoading, setGenerateError, setGeneratedHtml,
+  const { generatedHtml, businessName, setStep, setGeneratedHtml,
     toneAnalysis, lpPurpose, targetAudience, sellingPoints, catchphraseHint, industry, cvGoal, cvButtonText, cvUrl, contactEmail } = useLPCreatorStore();
   const [previewFull, setPreviewFull] = useState(false);
   const [regenLoading, setRegenLoading] = useState(false);
 
+  // HTML editor state
+  const [editMode, setEditMode] = useState(false);
+  const [editHtml, setEditHtml] = useState(generatedHtml);
+  const [previewHtml, setPreviewHtml] = useState(generatedHtml);
+
+  // Archive state
+  const [archives, setArchives] = useState<ArchivedLP[]>([]);
+  const [archivesOpen, setArchivesOpen] = useState(false);
+  const [archiveMsg, setArchiveMsg] = useState('');
+
+  // Banner state
+  const [banners, setBanners] = useState<BannerResult[]>([]);
+  const [bannerLoading, setBannerLoading] = useState(false);
+  const [bannersOpen, setBannersOpen] = useState(false);
+  const [copiedBannerId, setCopiedBannerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEditHtml(generatedHtml);
+    setPreviewHtml(generatedHtml);
+  }, [generatedHtml]);
+
+  useEffect(() => {
+    setArchives(loadArchives());
+  }, []);
+
   const handleDownload = () => {
-    const blob = new Blob([generatedHtml], { type: 'text/html;charset=utf-8' });
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${businessName || 'lp'}.html`;
@@ -625,19 +704,100 @@ function Step5() {
       });
       const { html } = await res.json() as { html: string };
       setGeneratedHtml(html);
+      setPreviewHtml(html);
+      setEditHtml(html);
     } finally {
       setRegenLoading(false);
     }
   };
 
+  const handleApplyEdit = () => {
+    setPreviewHtml(editHtml);
+    setGeneratedHtml(editHtml);
+    setEditMode(false);
+  };
+
+  const handleSaveArchive = () => {
+    const now = new Date().toISOString();
+    const existing = loadArchives();
+    const newEntry: ArchivedLP = {
+      id: `${Date.now()}`,
+      businessName: businessName || '無名',
+      lpPurpose: lpPurpose || '',
+      industry: industry || '',
+      html: previewHtml,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const updated = [newEntry, ...existing];
+    saveArchives(updated);
+    setArchives(updated);
+    setArchiveMsg('保存しました！');
+    setTimeout(() => setArchiveMsg(''), 2000);
+  };
+
+  const handleDeleteArchive = (id: string) => {
+    const updated = archives.filter(a => a.id !== id);
+    saveArchives(updated);
+    setArchives(updated);
+  };
+
+  const handlePreviewArchive = (html: string) => {
+    setPreviewHtml(html);
+    setEditHtml(html);
+    setGeneratedHtml(html);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleGenerateBanners = async () => {
+    if (!toneAnalysis) return;
+    setBannerLoading(true);
+    setBannersOpen(true);
+    try {
+      const res = await fetch('/api/generate-banners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName,
+          catchphrase: catchphraseHint || businessName,
+          cvButtonText,
+          primaryColor: toneAnalysis.colors.primary,
+          accentColor: toneAnalysis.colors.accent,
+          industry: industry || 'other',
+          heroImage: toneAnalysis.siteImages?.[0],
+        }),
+      });
+      const data = await res.json() as { banners: BannerResult[] };
+      setBanners(data.banners ?? []);
+    } finally {
+      setBannerLoading(false);
+    }
+  };
+
+  const handleCopyBanner = (id: string, html: string) => {
+    navigator.clipboard.writeText(html).then(() => {
+      setCopiedBannerId(id);
+      setTimeout(() => setCopiedBannerId(null), 1500);
+    });
+  };
+
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' });
+    } catch {
+      return iso;
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      {/* Header row */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-xl font-bold text-white mb-1">LP生成完了</h2>
           <p className="text-white/50 text-sm">プレビューを確認してダウンロードしてください</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={handleRegen}
             disabled={regenLoading}
@@ -647,11 +807,25 @@ function Step5() {
             再生成
           </button>
           <button
+            onClick={() => { setEditMode(v => !v); setEditHtml(previewHtml); }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs transition-all ${editMode ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-300' : 'border-white/10 hover:bg-white/5 text-white/60 hover:text-white'}`}
+          >
+            <Code className="w-3.5 h-3.5" />
+            HTMLを編集
+          </button>
+          <button
             onClick={() => setPreviewFull(v => !v)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 text-white/60 hover:text-white text-xs transition-all"
           >
             <Eye className="w-3.5 h-3.5" />
             {previewFull ? '縮小' : 'フル表示'}
+          </button>
+          <button
+            onClick={handleSaveArchive}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 text-green-300 text-xs transition-all"
+          >
+            <Save className="w-3.5 h-3.5" />
+            {archiveMsg || '保存'}
           </button>
           <button
             onClick={handleDownload}
@@ -663,6 +837,35 @@ function Step5() {
         </div>
       </div>
 
+      {/* HTML Editor (inline) */}
+      {editMode && (
+        <div className="rounded-xl border border-yellow-500/30 bg-[#0d1117] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-yellow-500/20 bg-yellow-500/5">
+            <span className="text-yellow-300 text-xs font-semibold flex items-center gap-1.5"><Code className="w-3.5 h-3.5" />HTMLを直接編集</span>
+            <div className="flex gap-2">
+              <button
+                onClick={handleApplyEdit}
+                className="px-3 py-1 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-xs font-medium transition-all"
+              >
+                プレビューを更新
+              </button>
+              <button
+                onClick={() => setEditMode(false)}
+                className="px-3 py-1 rounded-lg border border-white/10 text-white/40 hover:text-white text-xs transition-all"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+          <textarea
+            value={editHtml}
+            onChange={e => setEditHtml(e.target.value)}
+            className="w-full h-64 p-4 bg-transparent text-green-300 text-xs font-mono resize-y focus:outline-none"
+            spellCheck={false}
+          />
+        </div>
+      )}
+
       {/* Preview */}
       <div className={`rounded-2xl overflow-hidden border border-white/10 ${previewFull ? 'fixed inset-4 z-50 bg-white' : 'w-full'}`}>
         {previewFull && (
@@ -673,16 +876,25 @@ function Step5() {
           </div>
         )}
         <iframe
-          srcDoc={generatedHtml}
+          srcDoc={previewHtml}
           className={`w-full bg-white ${previewFull ? 'h-[calc(100vh-44px)]' : 'h-[500px]'}`}
           title="LP Preview"
-          sandbox="allow-same-origin allow-forms"
+          sandbox="allow-same-origin allow-forms allow-scripts"
         />
       </div>
 
+      {/* Bottom action row */}
       <div className="flex gap-3">
         <button onClick={() => setStep(4)} className="flex items-center gap-1.5 px-4 py-3 rounded-xl border border-white/10 text-white/60 hover:text-white text-sm transition-all">
           <ArrowLeft className="w-4 h-4" />設定に戻る
+        </button>
+        <button
+          onClick={handleGenerateBanners}
+          disabled={bannerLoading}
+          className="flex items-center gap-2 px-4 py-3 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-sm font-medium transition-all"
+        >
+          <BannerIcon className={`w-4 h-4 ${bannerLoading ? 'animate-pulse' : ''}`} />
+          {bannerLoading ? 'バナー生成中...' : 'バナー生成'}
         </button>
         <button
           onClick={handleDownload}
@@ -690,6 +902,101 @@ function Step5() {
         >
           <Download className="w-4 h-4" />HTMLファイルをダウンロード
         </button>
+      </div>
+
+      {/* ── Banner results ── */}
+      {bannersOpen && (
+        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 overflow-hidden">
+          <button
+            onClick={() => setBannersOpen(v => !v)}
+            className="w-full flex items-center justify-between px-5 py-3 text-left"
+          >
+            <span className="text-blue-300 text-sm font-semibold flex items-center gap-2">
+              <BannerIcon className="w-4 h-4" />バナー一覧（{banners.length}種類）
+            </span>
+            {bannersOpen ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
+          </button>
+          {bannersOpen && (
+            <div className="px-5 pb-5 space-y-4">
+              {bannerLoading && (
+                <div className="flex items-center gap-2 text-white/50 text-sm py-4">
+                  <span className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                  バナーを生成中...
+                </div>
+              )}
+              {banners.map(b => (
+                <div key={b.id} className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-white/5">
+                    <div>
+                      <span className="text-white/80 text-xs font-semibold">{b.name}</span>
+                      <span className="text-white/30 text-xs ml-2">{b.w}×{b.h}px · {b.platform}</span>
+                    </div>
+                    <button
+                      onClick={() => handleCopyBanner(b.id, b.html)}
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-white/10 hover:bg-white/5 text-white/50 hover:text-white text-xs transition-all"
+                    >
+                      <Copy className="w-3 h-3" />
+                      {copiedBannerId === b.id ? 'コピー済み' : 'HTMLコピー'}
+                    </button>
+                  </div>
+                  <div className="p-3 overflow-auto max-h-32">
+                    <iframe
+                      srcDoc={b.html}
+                      style={{ width: Math.min(b.w, 400), height: Math.min(b.h, 120), border: 'none', borderRadius: 4 }}
+                      title={b.name}
+                      sandbox="allow-same-origin"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Archive section ── */}
+      <div className="rounded-2xl border border-white/10 overflow-hidden">
+        <button
+          onClick={() => setArchivesOpen(v => !v)}
+          className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-white/[0.02] transition-colors"
+        >
+          <span className="text-white/60 text-sm font-medium flex items-center gap-2">
+            <Save className="w-4 h-4" />保存済みLP一覧（{archives.length}件）
+          </span>
+          {archivesOpen ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
+        </button>
+        {archivesOpen && (
+          <div className="border-t border-white/5">
+            {archives.length === 0 ? (
+              <p className="px-5 py-4 text-white/30 text-sm">保存済みのLPはありません</p>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {archives.map(a => (
+                  <div key={a.id} className="flex items-center justify-between px-5 py-3 hover:bg-white/[0.02]">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white/80 text-sm font-medium truncate">{a.businessName}</p>
+                      <p className="text-white/40 text-xs">{a.lpPurpose} · {a.industry} · {formatDate(a.updatedAt)}</p>
+                    </div>
+                    <div className="flex gap-2 ml-3 flex-shrink-0">
+                      <button
+                        onClick={() => handlePreviewArchive(a.html)}
+                        className="px-2.5 py-1 rounded-lg border border-white/10 hover:bg-white/5 text-white/50 hover:text-white text-xs transition-all"
+                      >
+                        プレビュー
+                      </button>
+                      <button
+                        onClick={() => handleDeleteArchive(a.id)}
+                        className="p-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-400/60 hover:text-red-400 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

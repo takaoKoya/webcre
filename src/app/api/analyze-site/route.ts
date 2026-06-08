@@ -20,6 +20,13 @@ export interface ToneAnalysis {
   rawDescription: string;    // AI summary of the site aesthetics
   siteImages?: string[];     // extracted image URLs from the site
   siteUrl?: string;          // base URL for resolving relative paths
+  // Extended fields from AI analysis
+  mainServiceDescription?: string;
+  targetPersona?: string;
+  brandVoice?: string;
+  uniqueStrengths?: string[];
+  priceRange?: string;
+  targetIndustryJa?: string;
 }
 
 // ─── Color extraction helpers ───────────────────────────────────────────────
@@ -43,8 +50,16 @@ function extractSiteImages(html: string, baseUrl: string): string[] {
     const src = m[1];
     if (!src) continue;
     if (src.startsWith('data:')) continue;
+    // Exclude icons, logos, favicons, tracking pixels, sprites
     if (/icon|logo|favicon|pixel|tracking|1x1|sprite/i.test(src)) continue;
+    // Exclude SVGs
     if (/\.(svg)(\?|$)/i.test(src)) continue;
+    // Exclude QR codes and barcodes
+    if (/qr|qrcode|barcode/i.test(src)) continue;
+    // Exclude SNS button images
+    if (/twitter|facebook|instagram|line|youtube|tiktok|x\.com/i.test(src)) continue;
+    // Exclude banner / ad patterns
+    if (/banner|ad-|ads-|advertisement/i.test(src)) continue;
     images.push(src);
   }
 
@@ -64,6 +79,8 @@ function extractSiteImages(html: string, baseUrl: string): string[] {
   const filtered = unique.filter(u => {
     try {
       const path = new URL(u).pathname;
+      // Exclude paths that look like they contain width <= 100 (tiny images)
+      if (/[_\-\/](?:w|width)[_\-]?(?:[0-9]{1,2}|100)[_\-\/\.]/i.test(path)) return false;
       return path.length > 5 && !path.endsWith('/');
     } catch { return false; }
   });
@@ -150,7 +167,7 @@ async function analyzeWithAI(params: {
       { role: 'user', content: userContent },
     ],
     response_format: { type: 'json_object' },
-    max_tokens: 800,
+    max_tokens: 1000,
   });
 
   const raw = response.choices[0]?.message?.content ?? '{}';
@@ -201,7 +218,13 @@ ${siteInfo}
   "industryHint": "推定業種（例：美容サロン）",
   "businessNameHint": "推定ビジネス名",
   "catchphraseHint": "サイトのキャッチコピーや印象的な文言",
-  "rawDescription": "このサイトのデザインスタイルの詳細説明（100字程度）"
+  "rawDescription": "このサイトのデザインスタイルの詳細説明（100字程度）",
+  "targetIndustryJa": "具体的な日本語業種名（例：ハウスクリーニング、エアコン清掃）",
+  "mainServiceDescription": "主要サービスの説明（50字以内）",
+  "targetPersona": "ターゲット顧客像（例：30〜50代の共働き家庭）",
+  "brandVoice": "ブランドの話し方のトーン（例：親切・プロフェッショナル・カジュアル）",
+  "uniqueStrengths": ["強み1", "強み2", "強み3"],
+  "priceRange": "価格帯のヒント（例：リーズナブル・プレミアム）"
 }`;
 }
 
