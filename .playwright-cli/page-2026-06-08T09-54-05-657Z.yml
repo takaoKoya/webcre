@@ -1,0 +1,229 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "ウェブクリ / LP特化クリエイター" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - img [ref=e7]
+          - generic [ref=e9]: ウェブクリ
+          - generic [ref=e10]: /
+          - generic [ref=e11]: LP特化クリエイター
+        - link "ダッシュボードへ" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard
+    - main [ref=e13]:
+      - generic [ref=e21]:
+        - generic [ref=e23]:
+          - img [ref=e101]
+          - generic [ref=e28]: サイト入力
+        - generic [ref=e31]:
+          - img [ref=e170]
+          - generic [ref=e39]: トンマナ確認
+        - generic [ref=e42]:
+          - img [ref=e251]
+          - generic [ref=e47]: LP詳細
+        - generic [ref=e50]:
+          - img [ref=e306]
+          - generic [ref=e56]: CVゴール
+        - generic [ref=e59]:
+          - img [ref=e61]
+          - generic [ref=e64]: 生成・確認
+      - generic [ref=e309]:
+        - generic [ref=e310]:
+          - generic [ref=e311]:
+            - heading "LP生成完了" [level=2] [ref=e312]
+            - paragraph [ref=e313]: プレビューを確認してダウンロードしてください
+          - generic [ref=e314]:
+            - button "再生成" [ref=e315]:
+              - img [ref=e316]
+              - text: 再生成
+            - button "ビジュアル編集" [ref=e321]:
+              - img [ref=e322]
+              - text: ビジュアル編集
+            - button "フル表示" [ref=e325]:
+              - img [ref=e326]
+              - text: フル表示
+            - button "保存" [ref=e329]:
+              - img [ref=e330]
+              - text: 保存
+            - button "HTMLをDL" [ref=e334]:
+              - img [ref=e335]
+              - text: HTMLをDL
+        - iframe [ref=e339]:
+          - generic [active] [ref=f1e1]:
+            - banner [ref=f1e2]:
+              - generic [ref=f1e3]: テストビューティサロン
+              - link "今すぐ予約する" [ref=f1e5] [cursor=pointer]:
+                - /url: "#contact"
+            - generic [ref=f1e6]:
+              - generic [ref=f1e9]:
+                - generic [ref=f1e10]: ✦ 無料相談・資料請求
+                - heading "資生堂が取扱うブランド情報 化粧品の商品情報、お客さまの毎日のキレイにお役立ちする美容の情報、お客さま窓口、企業情報等、" [level=1] [ref=f1e11]:
+                  - text: 資生堂が取扱うブランド情報
+                  - text: 化粧品の商品情報、お客さまの毎日のキレイにお役立ちする美容の情報、お客さま窓口、企業情報等、
+                - paragraph [ref=f1e12]:
+                  - text: 40代女性・スキンケアに悩んでいる方に向けた、テストビューティサロンならではのアプローチ。
+                  - text: あなたの悩みを根本から解決します。
+                - generic [ref=f1e13]:
+                  - link "今すぐ予約する →" [ref=f1e14] [cursor=pointer]:
+                    - /url: "#contact"
+                  - link "詳しく見る" [ref=f1e15] [cursor=pointer]:
+                    - /url: "#features"
+                - generic [ref=f1e16]:
+                  - generic [ref=f1e17]: ✓ 無料相談受付中
+                  - generic [ref=f1e18]: ✓ 実績500社以上
+                  - generic [ref=f1e19]: ✓ 満足度98%
+              - generic [ref=f1e20]: ↓
+            - generic [ref=f1e23]:
+              - generic [ref=f1e24]:
+                - generic [ref=f1e25]: 500+
+                - generic [ref=f1e26]: 累計導入実績
+              - generic [ref=f1e27]:
+                - generic [ref=f1e28]: 98%
+                - generic [ref=f1e29]: 顧客満足度
+              - generic [ref=f1e30]:
+                - generic [ref=f1e31]: 10年
+                - generic [ref=f1e32]: 業界経験
+              - generic [ref=f1e33]:
+                - generic [ref=f1e34]: 24h
+                - generic [ref=f1e35]: サポート対応
+            - generic [ref=f1e38]:
+              - img "テストビューティサロンのサービス" [ref=f1e40]
+              - generic [ref=f1e41]:
+                - generic [ref=f1e42]: PROBLEM
+                - heading "こんなお悩み、 ありませんか？" [level=2] [ref=f1e43]:
+                  - text: こんなお悩み、
+                  - text: ありませんか？
+                - paragraph [ref=f1e44]: 40代女性・スキンケアに悩んでいる方の多くが抱える課題を、テストビューティサロンは確実に解決します。
+                - list [ref=f1e45]:
+                  - listitem [ref=f1e46]:
+                    - generic [ref=f1e47]: 😔
+                    - generic [ref=f1e48]:
+                      - strong [ref=f1e49]: 40代女性の課題を根本から解決
+                      - text: 一人で悩まず、専門家に相談しましょう
+                  - listitem [ref=f1e50]:
+                    - generic [ref=f1e51]: 😟
+                    - generic [ref=f1e52]:
+                      - strong [ref=f1e53]: 時間・コスト・品質の三拍子を実現
+                      - text: 一人で悩まず、専門家に相談しましょう
+                  - listitem [ref=f1e54]:
+                    - generic [ref=f1e55]: 😤
+                    - generic [ref=f1e56]:
+                      - strong [ref=f1e57]: 専門チームが最初から最後まで伴走
+                      - text: 一人で悩まず、専門家に相談しましょう
+            - generic [ref=f1e59]:
+              - generic [ref=f1e60]:
+                - generic [ref=f1e61]: FEATURES
+                - heading "テストビューティサロンが選ばれる 3つの理由" [level=2] [ref=f1e62]:
+                  - text: テストビューティサロンが選ばれる
+                  - text: 3つの理由
+                - paragraph [ref=f1e63]: 40代女性・スキンケアに悩んでいる方のニーズに応え続ける、私たちの強みをご紹介します。
+              - generic [ref=f1e64]:
+                - generic [ref=f1e65]:
+                  - generic [ref=f1e66]: "01"
+                  - generic [ref=f1e67]: ✨
+                  - heading "肌年齢-10歳の独自フェイシャル技術" [level=3] [ref=f1e68]
+                  - paragraph [ref=f1e69]: 肌年齢-10歳の独自フェイシャル技術を徹底追求。テストビューティサロンだからこそ実現できる高い水準を維持し、お客様に最高の体験をお届けします。
+                - generic [ref=f1e70]:
+                  - generic [ref=f1e71]: "02"
+                  - generic [ref=f1e72]: 💆
+                  - heading "完全個室・プライベート空間" [level=3] [ref=f1e73]
+                  - paragraph [ref=f1e74]: 完全個室・プライベート空間を徹底追求。テストビューティサロンだからこそ実現できる高い水準を維持し、お客様に最高の体験をお届けします。
+                - generic [ref=f1e75]:
+                  - generic [ref=f1e76]: "03"
+                  - generic [ref=f1e77]: 🌸
+                  - heading "施術後の即日効果が実感できる" [level=3] [ref=f1e78]
+                  - paragraph [ref=f1e79]: ご依頼から最短即日対応。スピーディーな対応でお客様のビジネスをスムーズにサポートします。
+            - generic [ref=f1e82]:
+              - img "テストビューティサロンについて" [ref=f1e84]
+              - generic [ref=f1e85]:
+                - generic [ref=f1e86]: WHY US
+                - heading "なぜテストビューティサロンが 最適な選択なのか" [level=2] [ref=f1e87]:
+                  - text: なぜテストビューティサロンが
+                  - text: 最適な選択なのか
+                - paragraph [ref=f1e88]: 私たちは40代女性・スキンケアに悩んでいる方の課題に真剣に向き合い、一人ひとりに最適なソリューションを提供し続けています。単なる無料相談・資料請求に留まらず、長期的な関係を大切にしています。
+                - list [ref=f1e89]:
+                  - listitem [ref=f1e90]: 肌年齢-10歳の独自フェイシャル技術
+                  - listitem [ref=f1e91]: 完全個室・プライベート空間
+                  - listitem [ref=f1e92]: 施術後の即日効果が実感できる
+                  - listitem [ref=f1e93]: 充実したアフターサポート体制
+                  - listitem [ref=f1e94]: 明確な料金体系・追加費用なし
+                - link "今すぐ予約する →" [ref=f1e96] [cursor=pointer]:
+                  - /url: "#contact"
+            - generic [ref=f1e98]:
+              - generic [ref=f1e99]:
+                - generic [ref=f1e100]: TESTIMONIALS
+                - heading "お客様の声" [level=2] [ref=f1e101]
+                - paragraph [ref=f1e102]: 実際にご利用いただいたお客様からの声をご紹介します
+              - generic [ref=f1e103]:
+                - generic [ref=f1e104]:
+                  - text: "\""
+                  - generic [ref=f1e105]: ★★★★★
+                  - paragraph [ref=f1e106]: テストビューティサロンに相談してから、毎日の生活がガラリと変わりました。こんなに結果が出るとは思っていなかったので本当に感謝しています。
+                  - generic [ref=f1e107]:
+                    - img "田中 美咲様" [ref=f1e109]
+                    - generic [ref=f1e110]:
+                      - generic [ref=f1e111]: 田中 美咲様
+                      - generic [ref=f1e112]: 30代・会社員
+                - generic [ref=f1e113]:
+                  - text: "\""
+                  - generic [ref=f1e114]: ★★★★★
+                  - paragraph [ref=f1e115]: 最初は半信半疑でしたが、プロのサポートで確実に成果が出ています。もっと早く相談すれば良かったと思うくらいです。
+                  - generic [ref=f1e116]:
+                    - img "鈴木 健太様" [ref=f1e118]
+                    - generic [ref=f1e119]:
+                      - generic [ref=f1e120]: 鈴木 健太様
+                      - generic [ref=f1e121]: 40代・経営者
+                - generic [ref=f1e122]:
+                  - text: "\""
+                  - generic [ref=f1e123]: ★★★★★
+                  - paragraph [ref=f1e124]: 他社と比較しましたが、テストビューティサロンの丁寧さと専門性は別格でした。コスパも最高で今後もお願いしたいです。
+                  - generic [ref=f1e125]:
+                    - img "山田 花子様" [ref=f1e127]
+                    - generic [ref=f1e128]:
+                      - generic [ref=f1e129]: 山田 花子様
+                      - generic [ref=f1e130]: 20代・フリーランス
+            - generic [ref=f1e132]:
+              - generic [ref=f1e133]:
+                - generic [ref=f1e134]: FAQ
+                - heading "よくある質問" [level=2] [ref=f1e135]
+              - generic [ref=f1e136]:
+                - group [ref=f1e137]:
+                  - generic "初回相談は無料ですか？ +" [ref=f1e138] [cursor=pointer]
+                - group [ref=f1e139]:
+                  - generic "無料相談・資料請求に関して何から始めればいいですか？ +" [ref=f1e140] [cursor=pointer]
+                - group [ref=f1e141]:
+                  - generic "対応エリアはどこですか？ +" [ref=f1e142] [cursor=pointer]
+                - group [ref=f1e143]:
+                  - generic "契約後にキャンセルはできますか？ +" [ref=f1e144] [cursor=pointer]
+                - group [ref=f1e145]:
+                  - generic "実績や事例を見ることはできますか？ +" [ref=f1e146] [cursor=pointer]
+            - generic [ref=f1e148]:
+              - generic [ref=f1e149]: 予約する
+              - heading "まずは無料で ご相談ください" [level=2] [ref=f1e150]:
+                - text: まずは無料で
+                - text: ご相談ください
+              - paragraph [ref=f1e151]: テストビューティサロンの専任スタッフが、あなたの状況に合わせて丁寧にご対応します。
+              - generic [ref=f1e153]:
+                - link "今すぐ予約する →" [ref=f1e154] [cursor=pointer]:
+                  - /url: "#contact"
+                - paragraph [ref=f1e155]: まずはお気軽にご相談ください。担当者が迅速に対応します。
+            - contentinfo [ref=f1e156]:
+              - generic [ref=f1e157]:
+                - generic [ref=f1e158]: テストビューティサロン
+                - generic [ref=f1e159]: © 2026 テストビューティサロン. All rights reserved.
+        - generic [ref=e340]:
+          - button "設定に戻る" [ref=e341]:
+            - img [ref=e342]
+            - text: 設定に戻る
+          - button "バナー生成" [ref=e344]:
+            - img [ref=e345]
+            - text: バナー生成
+          - button "HTMLファイルをダウンロード" [ref=e349]:
+            - img [ref=e350]
+            - text: HTMLファイルをダウンロード
+        - button "保存済みLP一覧（0件）" [ref=e354]:
+          - generic [ref=e355]:
+            - img [ref=e356]
+            - text: 保存済みLP一覧（0件）
+          - img [ref=e360]
+  - alert [ref=e91]

@@ -285,7 +285,73 @@ async function generateLPWithAI(input: LPInput): Promise<string> {
   let raw = response.choices[0]?.message?.content ?? '';
   raw = raw.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   if (!raw.startsWith('<!DOCTYPE')) raw = await buildFallbackLP(input);
-  return raw;
+  return ensureRequiredAssets(raw);
+}
+
+// Google Fonts + JS を強制挿入（AIが省略した場合のサーバーサイド保険）
+function ensureRequiredAssets(html: string): string {
+  const FONTS_TAG = `<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">`;
+
+  const ESSENTIAL_JS = `<script>
+(function(){
+  // Intersection Observer fade-in
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('is-visible');}});
+  },{threshold:0.08,rootMargin:'0px 0px -40px 0px'});
+  document.querySelectorAll('section,article,.anim-up,.fade-in').forEach(function(el){obs.observe(el);});
+
+  // Count-up animation
+  var obs2 = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(!e.isIntersecting) return;
+      var el = e.target, raw = el.getAttribute('data-count')||'';
+      var end = parseInt(raw.replace(/[^0-9]/g,''),10);
+      if(!end) return;
+      var suf = raw.replace(/[0-9,]/g,''), cur = 0, dur = 1600;
+      var tick = setInterval(function(){
+        cur = Math.min(cur + Math.ceil(end/(dur/16)), end);
+        el.textContent = cur.toLocaleString() + suf;
+        if(cur >= end) clearInterval(tick);
+      }, 16);
+      obs2.unobserve(el);
+    });
+  },{threshold:0.5});
+  document.querySelectorAll('[data-count]').forEach(function(el){obs2.observe(el);});
+
+  // Sticky header dark on scroll
+  var hdr = document.querySelector('header,.header,nav');
+  if(hdr) window.addEventListener('scroll',function(){
+    hdr.style.background = window.scrollY>60 ? 'rgba(0,0,0,0.92)' : '';
+  },{passive:true});
+
+  // FAQ accordion
+  document.querySelectorAll('.faq-item,[data-faq]').forEach(function(item){
+    var q = item.querySelector('.faq-q,.question,dt,summary,h3,h4');
+    var a = item.querySelector('.faq-a,.answer,dd,p');
+    if(!q||!a) return;
+    a.style.cssText = 'overflow:hidden;max-height:0;transition:max-height .35s ease;';
+    q.style.cursor = 'pointer';
+    q.addEventListener('click',function(ev){
+      ev.preventDefault();
+      var open = parseFloat(a.style.maxHeight||'0') > 0;
+      document.querySelectorAll('.faq-item .faq-a,.faq-item .answer').forEach(function(x){x.style.maxHeight='0';});
+      if(!open) a.style.maxHeight = a.scrollHeight + 'px';
+    });
+  });
+})();
+</script>`;
+
+  // Google Fonts が未挿入なら <head> 末尾に挿入
+  if (!html.includes('fonts.googleapis.com')) {
+    html = html.replace('</head>', FONTS_TAG + '\n</head>');
+  }
+  // JS が未挿入なら </body> 直前に挿入
+  if (!html.includes('IntersectionObserver') && !html.includes('data-count')) {
+    html = html.replace('</body>', ESSENTIAL_JS + '\n</body>');
+  }
+  return html;
 }
 
 const SYSTEM_PROMPT = `あなたは2026年基準の日本最高峰LPデザイナー兼コンバージョンコピーライターです。
@@ -330,6 +396,87 @@ const SYSTEM_PROMPT = `あなたは2026年基準の日本最高峰LPデザイナ
 - モバイル完全対応: 320px〜1920px（メディアクエリ必須）
 - scroll-behavior: smooth
 - @keyframes: fadeInUp, fadeInLeft, scaleIn, pulse-ring を実装
+
+■ 以下のコードを<head>に必ず含めること（省略・変更禁止）
+
+\`\`\`html
+<!-- Google Fonts: 省略・変更禁止 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
+\`\`\`
+
+■ 以下のJSを</body>直前に必ず含めること（省略・変更禁止）
+
+\`\`\`html
+<script>
+// Intersection Observer: スクロールfadeIn
+(function(){
+  var els = document.querySelectorAll('.anim-up,.anim-left,.anim-right,.anim-scale,.fade-in');
+  if(!els.length) {
+    // クラスがない場合はセクション全体に適用
+    document.querySelectorAll('section,article').forEach(function(el){el.classList.add('anim-up');});
+    els = document.querySelectorAll('.anim-up');
+  }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){e.target.classList.add('is-visible');io.unobserve(e.target);}
+    });
+  },{threshold:0.1});
+  els.forEach(function(el){io.observe(el);});
+})();
+
+// カウントアップ
+(function(){
+  var io2 = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(!e.isIntersecting) return;
+      var el = e.target;
+      var raw = el.getAttribute('data-count')||'';
+      var target = parseInt(raw.replace(/[^0-9]/g,''),10);
+      if(!target){return;}
+      var suffix = raw.replace(/[0-9]/g,'');
+      var start = 0, duration = 1800, step = 16;
+      var timer = setInterval(function(){
+        start += Math.ceil(target/(duration/step));
+        if(start>=target){start=target;clearInterval(timer);}
+        el.textContent = start.toLocaleString() + suffix;
+      },step);
+      io2.unobserve(el);
+    });
+  },{threshold:0.5});
+  document.querySelectorAll('[data-count]').forEach(function(el){io2.observe(el);});
+})();
+
+// 追従ヘッダー: スクロールでdark化
+(function(){
+  var h = document.querySelector('header,.site-header,.header');
+  if(!h) return;
+  window.addEventListener('scroll',function(){
+    if(window.scrollY>60){h.classList.add('scrolled');}else{h.classList.remove('scrolled');}
+  });
+})();
+
+// FAQアコーディオン
+(function(){
+  document.querySelectorAll('.faq-item,.faq-question,[data-faq]').forEach(function(el){
+    var q = el.querySelector('summary,.question,h3,h4,dt');
+    var a = el.querySelector('.answer,.faq-answer,p,dd');
+    if(!q||!a) return;
+    a.style.cssText='overflow:hidden;max-height:0;transition:max-height 0.35s ease,padding 0.35s ease;padding:0;';
+    q.style.cursor='pointer';
+    q.addEventListener('click',function(ev){
+      ev.preventDefault();
+      var open = a.style.maxHeight!=='0px'&&a.style.maxHeight!=='';
+      document.querySelectorAll('.faq-item .answer,.faq-item .faq-answer').forEach(function(x){
+        x.style.maxHeight='0';x.style.padding='0';
+      });
+      if(!open){a.style.maxHeight=a.scrollHeight+'px';a.style.padding='16px 0';}
+    });
+  });
+})();
+</script>
+\`\`\`
 
 ■ コピーライティング絶対禁止事項
 - 「〜を徹底追求し、お客様の期待を超える成果をお届けします」→ 即禁止

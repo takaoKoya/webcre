@@ -1,0 +1,56 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "ウェブクリ / LP特化クリエイター" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - img [ref=e7]
+          - generic [ref=e9]: ウェブクリ
+          - generic [ref=e10]: /
+          - generic [ref=e11]: LP特化クリエイター
+        - link "ダッシュボードへ" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard
+    - main [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - img [ref=e16]
+          - text: 既存サイトのトンマナを引き継いだLP生成
+        - heading "LP特化クリエイター" [level=1] [ref=e19]
+        - paragraph [ref=e20]: クライアントのウェブサイトURLまたは画像を入力するだけで、 そのブランドのトンマナにぴったり合ったLPをAIが自動生成します。
+      - generic [ref=e21]:
+        - generic [ref=e23]:
+          - img [ref=e25]
+          - generic [ref=e28]: サイト入力
+        - generic [ref=e31]:
+          - img [ref=e33]
+          - generic [ref=e39]: トンマナ確認
+        - generic [ref=e42]:
+          - img [ref=e44]
+          - generic [ref=e47]: LP詳細
+        - generic [ref=e50]:
+          - img [ref=e52]
+          - generic [ref=e56]: CVゴール
+        - generic [ref=e59]:
+          - img [ref=e61]
+          - generic [ref=e64]: 生成・確認
+      - generic [ref=e66]:
+        - generic [ref=e67]:
+          - heading "既存サイトのトンマナを読み込む" [level=2] [ref=e68]
+          - paragraph [ref=e69]: URLまたはスクリーンショット画像を入力してください
+        - generic [ref=e70]:
+          - button "URLを入力" [ref=e71]:
+            - img [ref=e72]
+            - text: URLを入力
+          - button "画像をアップロード" [ref=e75]:
+            - img [ref=e76]
+            - text: 画像をアップロード
+        - generic [ref=e80]:
+          - generic [ref=e81]: 既存サイトのURL
+          - generic [ref=e82]:
+            - img [ref=e83]
+            - textbox "https://your-client-site.com" [ref=e86]
+          - paragraph [ref=e87]: ※ 公開されているURLを入力してください。認証が必要なサイトは読み込めません。
+        - button "トンマナを解析する" [disabled] [ref=e88]:
+          - text: トンマナを解析する
+          - img [ref=e89]
+  - alert [ref=e91]
