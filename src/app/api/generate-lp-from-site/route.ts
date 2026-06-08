@@ -77,60 +77,160 @@ function generateFeatureDesc(
   return `${point}を徹底追求。${businessName}だからこそ実現できる高い水準を維持し、お客様に最高の体験をお届けします。`;
 }
 
-// ─── Image resolution: site images → Unsplash → Picsum ──────────────────────
+// ─── Image resolution: site images → Pexels → Curated Unsplash ──────────────
 
-const UNSPLASH_KEYWORDS: Record<string, string[]> = {
-  beauty: ['beauty salon', 'spa treatment', 'hair salon', 'skincare', 'wellness'],
-  medical: ['doctor clinic', 'healthcare', 'medical office', 'hospital', 'health'],
-  restaurant: ['restaurant dining', 'fine dining', 'japanese food', 'cafe interior', 'cuisine'],
-  fitness: ['gym fitness', 'workout training', 'sports', 'healthy lifestyle', 'exercise'],
-  legal: ['law office', 'attorney meeting', 'business professional', 'justice'],
-  realestate: ['luxury home interior', 'modern house', 'real estate', 'property'],
-  education: ['education learning', 'classroom', 'university study', 'knowledge'],
-  it: ['technology office', 'software development', 'digital innovation', 'coding'],
-  construction: ['construction architecture', 'modern building', 'engineering'],
-  retail: ['retail shop', 'boutique store', 'shopping', 'product display'],
-  cleaning: ['house cleaning', 'clean home interior', 'professional cleaning', 'spotless room'],
-  wedding: ['wedding ceremony', 'bridal', 'wedding flowers', 'wedding venue'],
-  travel: ['travel destination', 'tourism', 'vacation resort', 'adventure travel'],
-  insurance: ['financial planning', 'insurance office', 'business meeting', 'professional advisor'],
-  accounting: ['accounting office', 'financial documents', 'business professional', 'tax consulting'],
-  childcare: ['childcare', 'kids playing', 'kindergarten', 'happy children'],
-  welfare: ['elderly care', 'nursing care', 'healthcare elderly', 'caregiving'],
-  agriculture: ['organic farm', 'fresh vegetables', 'agriculture', 'food production'],
-  automotive: ['car dealership', 'luxury car', 'automotive', 'vehicle service'],
-  event: ['event venue', 'concert stage', 'party celebration', 'entertainment'],
-  photography: ['photography studio', 'camera professional', 'photo shoot', 'cinematography'],
-  interior: ['interior design', 'modern living room', 'home renovation', 'architecture interior'],
-  hr: ['business interview', 'team recruitment', 'HR office', 'job career'],
-  marketing: ['marketing strategy', 'advertising agency', 'digital marketing', 'creative agency'],
-  consulting: ['business consulting', 'strategy meeting', 'professional advisor', 'corporate office'],
-  other: ['business team', 'professional office', 'modern workspace', 'success'],
+// Pexels/Unsplash キーワード（英語で検索精度が高い）
+const IMAGE_KEYWORDS: Record<string, string[]> = {
+  beauty: ['beauty salon interior', 'spa treatment room', 'hair salon professional', 'skincare luxury', 'wellness spa'],
+  medical: ['modern clinic interior', 'doctor consulting patient', 'medical professional', 'hospital bright', 'healthcare office'],
+  restaurant: ['elegant restaurant interior', 'fine dining food', 'japanese cuisine', 'cafe cozy', 'food photography'],
+  fitness: ['gym modern interior', 'personal trainer workout', 'yoga studio', 'athlete training', 'fitness lifestyle'],
+  legal: ['law office interior', 'lawyer professional', 'business meeting room', 'justice scales', 'corporate office'],
+  realestate: ['luxury home interior', 'modern house exterior', 'apartment living room', 'real estate property', 'kitchen renovation'],
+  education: ['modern classroom', 'students studying', 'university campus', 'online learning', 'teacher student'],
+  it: ['modern tech office', 'developer coding', 'digital technology', 'startup office', 'computer programming'],
+  construction: ['construction site professional', 'modern architecture', 'building interior', 'renovation work', 'engineering blueprint'],
+  retail: ['luxury boutique interior', 'retail store display', 'shopping experience', 'product showcase', 'brand store'],
+  cleaning: ['clean modern home', 'professional cleaning service', 'spotless kitchen', 'house cleaning team', 'organized room'],
+  wedding: ['elegant wedding ceremony', 'bridal couple happy', 'wedding flowers decoration', 'wedding venue beautiful', 'bride portrait'],
+  travel: ['tropical beach resort', 'mountain landscape travel', 'city tourism', 'luxury hotel room', 'adventure travel'],
+  insurance: ['financial planning meeting', 'insurance professional', 'family protection', 'business security', 'advisor consulting'],
+  accounting: ['accounting office professional', 'financial documents', 'tax consulting', 'business accounting', 'calculator finance'],
+  childcare: ['children playing happy', 'kindergarten classroom', 'kids learning', 'childcare center', 'baby care'],
+  welfare: ['elderly care professional', 'nursing home bright', 'caregiver elderly', 'rehabilitation therapy', 'healthcare senior'],
+  agriculture: ['organic farm fresh', 'vegetables harvest', 'sustainable farming', 'food production', 'farm landscape'],
+  automotive: ['luxury car showroom', 'car maintenance professional', 'vehicle interior', 'automotive service', 'car detail'],
+  event: ['event venue elegant', 'party celebration', 'conference stage', 'corporate event', 'music concert'],
+  photography: ['photography studio professional', 'camera photographer', 'photo shoot creative', 'film production', 'studio lighting'],
+  interior: ['interior design modern', 'living room renovation', 'home decor elegant', 'architecture space', 'kitchen design'],
+  hr: ['job interview professional', 'team meeting business', 'recruitment hiring', 'career development', 'office teamwork'],
+  marketing: ['marketing agency creative', 'digital marketing strategy', 'advertising creative', 'social media marketing', 'creative team'],
+  consulting: ['business consulting meeting', 'strategy board', 'professional advisor', 'corporate consulting', 'boardroom meeting'],
+  other: ['professional business team', 'modern office workspace', 'success achievement', 'collaboration teamwork', 'business growth'],
 };
 
-function getUnsplashUrl(keyword: string, w = 1200, h = 700): string {
-  // Unsplash Source API — no key required, returns relevant image
-  return `https://source.unsplash.com/${w}x${h}/?${encodeURIComponent(keyword)}`;
+async function fetchPexelsImages(keywords: string[], count: number): Promise<string[]> {
+  const apiKey = process.env.PEXELS_API_KEY;
+  if (!apiKey) return [];
+
+  const results: string[] = [];
+  for (let i = 0; i < Math.min(keywords.length, count); i++) {
+    try {
+      const res = await fetch(
+        `https://api.pexels.com/v1/search?query=${encodeURIComponent(keywords[i])}&per_page=1&orientation=landscape`,
+        { headers: { Authorization: apiKey }, signal: AbortSignal.timeout(3000) }
+      );
+      if (!res.ok) continue;
+      const data = await res.json() as { photos: Array<{ src: { large2x: string; large: string } }> };
+      const photo = data.photos[0];
+      if (photo) results.push(photo.src.large2x || photo.src.large);
+    } catch { /* skip */ }
+  }
+  return results;
 }
 
-function resolveImages(input: LPInput): string[] {
+// キュレーション済み Unsplash 写真ID（Pexels未設定時のフォールバック）
+const CURATED_PHOTOS: Record<string, string[]> = {
+  beauty: [
+    'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=800&h=500&fit=crop&q=85',
+  ],
+  medical: [
+    'https://images.unsplash.com/photo-1504813184591-01572f98c85f?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=800&h=500&fit=crop&q=85',
+  ],
+  restaurant: [
+    'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&h=500&fit=crop&q=85',
+  ],
+  fitness: [
+    'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&h=500&fit=crop&q=85',
+  ],
+  cleaning: [
+    'https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&h=500&fit=crop&q=85',
+  ],
+  realestate: [
+    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=500&fit=crop&q=85',
+  ],
+  it: [
+    'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=500&fit=crop&q=85',
+  ],
+  wedding: [
+    'https://images.unsplash.com/photo-1519741497674-611481863552?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1606800052052-a08af7148866?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1550005809-91ad75fb315f?w=800&h=500&fit=crop&q=85',
+  ],
+  hr: [
+    'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&h=500&fit=crop&q=85',
+  ],
+  consulting: [
+    'https://images.unsplash.com/photo-1542744094-3a31f272c490?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&h=500&fit=crop&q=85',
+  ],
+  other: [
+    'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1400&h=800&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1559526324-593bc073d938?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&h=500&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=800&h=500&fit=crop&q=85',
+  ],
+};
+
+async function resolveImages(input: LPInput): Promise<string[]> {
   const { tone, industry } = input;
   const siteImgs: string[] = tone.siteImages ?? [];
+  const ind = industry ?? 'other';
+  const keywords = IMAGE_KEYWORDS[ind] ?? IMAGE_KEYWORDS.other;
+  const curated = CURATED_PHOTOS[ind] ?? CURATED_PHOTOS.other;
 
-  // If we have site images, use them (first 5 content images)
+  // 1st priority: site's own images (if ≥ 2 good ones)
   if (siteImgs.length >= 2) {
-    // Pad to 5 with Unsplash if needed
-    const keywords = UNSPLASH_KEYWORDS[industry ?? 'other'] ?? UNSPLASH_KEYWORDS.other;
     const padded = [...siteImgs];
-    for (let i = padded.length; i < 5; i++) {
-      padded.push(getUnsplashUrl(keywords[i % keywords.length]));
-    }
-    return padded.slice(0, 5);
+    const fallbacks = await fetchPexelsImages(keywords.slice(siteImgs.length), Math.max(0, 5 - siteImgs.length));
+    const filled = fallbacks.length > 0 ? [...padded, ...fallbacks] : [...padded, ...curated.slice(siteImgs.length)];
+    return filled.slice(0, 5);
   }
 
-  // No site images → Unsplash with industry keywords
-  const keywords = UNSPLASH_KEYWORDS[industry ?? 'other'] ?? UNSPLASH_KEYWORDS.other;
-  return keywords.map((kw, i) => getUnsplashUrl(kw, i === 0 ? 1400 : 800, i === 0 ? 800 : 500));
+  // 2nd priority: Pexels API
+  const pexels = await fetchPexelsImages(keywords, 5);
+  if (pexels.length >= 3) return pexels;
+
+  // 3rd priority: Curated Unsplash IDs
+  return curated;
 }
 
 function getAvatarUrl(n: number): string {
@@ -171,7 +271,7 @@ function getIconSet(context: ReturnType<typeof getLPContext>, industry?: string)
 async function generateLPWithAI(input: LPInput): Promise<string> {
   const openai = (await import('@/lib/openai')).default;
 
-  const images = resolveImages(input);
+  const images = await resolveImages(input);
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
@@ -184,26 +284,33 @@ async function generateLPWithAI(input: LPInput): Promise<string> {
 
   let raw = response.choices[0]?.message?.content ?? '';
   raw = raw.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-  if (!raw.startsWith('<!DOCTYPE')) raw = buildFallbackLP(input);
+  if (!raw.startsWith('<!DOCTYPE')) raw = await buildFallbackLP(input);
   return raw;
 }
 
-const SYSTEM_PROMPT = `あなたは世界最高水準のウェブデザイナー兼コンバージョンコピーライターです。
-指定された条件で、実際のプロが作るような完成度の高いランディングページHTMLを生成します。
-以下のデザイン原則を必ず守ってください：
-- ファーストビューは視覚的に圧倒的インパクト（大きな見出し・美しい背景）
-- 提供された画像URLを必ずそのまま使用すること（差し替え・プレースホルダー禁止）
-- アバター画像（https://i.pravatar.cc/80?img=N）でリアルな顔写真を使用
-- CSSアニメーション（fadeInUp, fadeInLeft等）で洗練された動き
-- ブランドカラーを活かした美しいグラデーション
-- 余白を大きく取ったプレミアム感のあるレイアウト
-- 数字・実績の視覚的な強調
-- モバイルファースト完全レスポンシブ
-- 見出しテキストはword-break: keep-all; overflow-wrap: break-wordを必ず設定（日本語の不自然な改行を防ぐ）
-- LP目的に完全に合致したコピーを書くこと（採用LPなら求職者向け、サービスLPなら顧客向け）
-- 各特徴カードの説明文は必ずユニークにすること（コピペ禁止）
-- JSON-LDスキーマ（LocalBusiness/Service/JobPosting等）を必ず含めること
-- OGPメタタグを完備すること`;
+const SYSTEM_PROMPT = `あなたは日本最高峰のLPデザイナー兼コンバージョンコピーライターです。
+電通・博報堂レベルのコピーライティングとWebデザインの知識を持ち、実際にCVRを3倍以上改善してきた実績があります。
+
+【絶対に守るルール】
+1. LP目的に完全特化したコピーを書く（採用LPなら求職者視点、サービスLPなら顧客視点）
+2. 見出しは必ずword-break: keep-all; overflow-wrap: break-word; を設定（日本語の不自然な改行を防ぐ）
+3. 各セクションのコピーは全てユニークに書く（同じ文を2度使わない）
+4. 提供された画像URLを必ずそのまま使用（alt属性も必ず設定）
+5. JSON-LDスキーマを必ず含める
+6. OGPメタタグを完備する
+7. font-size: clamp()でレスポンシブタイポグラフィを必ず使用
+8. 合計1200行以上の高品質HTMLを生成する
+9. コードブロックなし。<!DOCTYPE html>から始まる完全なHTMLのみ返す
+
+【デザイン原則】
+- ファーストビューは感情的インパクト重視（ユーザーが3秒で魅了される）
+- フォント: Google Fonts CDN経由で読み込む（Noto Serif JP + Noto Sans JP）
+- アニメーション: CSS @keyframes + Intersection Observer JSで実装（スクロール連動）
+- カラー: ブランドカラーを基軸にした洗練されたパレット
+- 余白: 十分な whitespace でプレミアム感を演出
+- CTAボタン: pulse-ring アニメーションで注目度UP
+- 数値実績: 視覚的にカウントアップ演出（JS）
+- モバイル: 完全レスポンシブ（320px〜1920pxまで対応）`;
 
 function buildPrompt(input: LPInput, images: string[]): string {
   const { tone, businessName, lpPurpose, targetAudience, sellingPoints, catchphraseHint, cvGoal, cvButtonText, cvUrl, contactEmail } = input;
@@ -241,6 +348,16 @@ ${sp.map((p, i) => `  ${i + 1}. ${p}`).join('\n')}
 - CTAボタン: ${cvAction}
 ${contactEmail ? `- 受信メール: ${contactEmail}` : ''}
 
+## ターゲット心理分析
+ターゲット: ${targetAudience}
+このターゲットが抱える最大の不安・痛み・欲求を深く理解し、それを解決するストーリーを語ってください。
+
+## コピーの禁止事項
+- 「〜を徹底追求し、お客様の期待を超える成果をお届けします。」→ 禁止（陳腐）
+- 同じ説明文を複数のカードに使う → 禁止
+- 抽象的な美辞麗句のみ → 禁止
+- 必ず具体的な数字・事例・ベネフィットを含める
+
 ## 重要：LP目的に基づくコピー指定
 LP目的: ${lpPurpose}
 CVゴール: ${cvLabel}
@@ -267,18 +384,36 @@ ${ctx.isRecruit ? `
 - 顔写真2: ${avatars[1]}
 - 顔写真3: ${avatars[2]}
 
-## 必須セクション構成（この順番で）
+## Google Fonts（必ず追加）
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
 
-1. **スティッキーヘッダー** — ロゴ左 + ナビ + CTAボタン右。backdrop-blur効果
-2. **ヒーローセクション** — 100vhフルスクリーン。background-imageにヒーロー画像 + 暗めオーバーレイ。中央に大きな見出し（font-size: clamp(2.5rem, 6vw, 4.5rem)）・サブコピー・CTAボタン2つ（プライマリ + アウトライン）・スクロール誘導矢印
-3. **実績バー** — 3〜4個の数字実績を横並びで。背景はプライマリカラー
-4. **課題提起** — ターゲットの悩みを3つ（チェックマーク付き）。右にセクション画像
-5. **ソリューション・3つの強み** — アイコン（絵文字）＋訴求ポイントをカードで。ホバーでリフトアップ
-6. **実績画像セクション** — セクション画像2を使った画像+テキスト左右レイアウト
-7. **${ctx.isRecruit ? '現役スタッフの声' : 'お客様の声'}** — 顔写真3枚。星5つ。引用文。名前・属性。カード形式
-8. **FAQ** — 5項目。クリックで開閉（CSS onlyまたはJS）
-9. **お問い合わせ / CTAセクション** — アクセントカラー背景。${cvGoal === 'inquiry' || cvGoal === 'download' ? 'お名前・メール・メッセージフォーム' : '大きなCTAボタン'}
-10. **フッター** — コピーライト
+## Intersection Observer JS（必ず実装）
+スクロールで表示された要素にis-visibleクラスを付与するJS。
+初期状態は opacity:0, transform:translateY(30px)
+is-visible付与時に transition: 0.6s ease でフェードイン
+
+## カウントアップ JS（必ず実装）
+数値要素(data-count="500"など)をスクロール時に0からカウントアップ
+
+## JSON-LD スキーマ（業種に応じて選択）
+- サービス系: LocalBusiness + Service
+- 採用: JobPosting または Organization
+- 飲食: Restaurant + Menu
+- 医療: MedicalBusiness + Physician
+
+## 構成（この順番で実装）
+1. <head>: OGP完備 + Google Fonts + JSON-LD
+2. スティッキーヘッダー: backdrop-blur、スクロール時に背景が暗くなるJS付き
+3. ヒーロー: フルスクリーン、background-image、パララックス効果JS付き
+4. 信頼バッジ: カウントアップ数値4つ
+5. 課題提起: ターゲットの痛みを3つ（共感を呼ぶコピー）
+6. 解決策紹介: 画像左右レイアウト
+7. 選ばれる理由: 3カード（各々ユニークなアイコン・タイトル・説明）
+8. 実績・事例: 画像+数値
+9. ${ctx.isRecruit ? '現役スタッフの声' : 'お客様の声'}: 3名（顔写真・星評価・具体的な引用文）
+10. よくある質問: 5問（クリックで開閉、JS実装）
+11. 最終CTA: 強調デザイン + ${cvGoal === 'inquiry' || cvGoal === 'download' ? 'お名前・メール・メッセージフォーム' : '大きなCTAボタン'}
+12. フッター: コピーライト・プライバシー
 
 ## SEO・構造化データ要件
 - <title>: ${businessName} | ${lpPurpose}（60字以内）
@@ -286,32 +421,32 @@ ${ctx.isRecruit ? `
 - <meta property="og:*">: OGPタグ完備（og:title, og:description, og:image, og:type）
 - h1は1つだけ、h2でセクション構造化
 - alt属性を全画像に設定
-- <script type="application/ld+json">でLocalBusiness または ${ctx.isRecruit ? 'JobPosting' : 'Service'} スキーマを埋め込む
+- <script type="application/ld+json">で${ctx.isRecruit ? 'JobPosting' : 'LocalBusiness + Service'} スキーマを埋め込む
 
 ## CSSの絶対要件
 - h1, h2, h3, h4 に word-break: keep-all; overflow-wrap: break-word; line-break: strict; を必ず設定
 - .hero h1 に同様のword-break設定
 - .section-title に同様のword-break設定
+- font-size: clamp() でレスポンシブタイポグラフィを使用
 
 ## 絶対要件
 - DOCTYPE htmlから始まる完全なHTMLのみ返す（説明不要）
-- <style>に全CSS記述（外部CSS不可）
+- <style>に全CSS記述
 - CSSカスタムプロパティ使用（:root定義）
-- @keyframes fadeInUp, fadeInLeft, scaleIn のアニメーション
-- Intersection Observer不要。CSSアニメーションはページロード時に発火
+- @keyframes fadeInUp, fadeInLeft, scaleIn, pulse-ring のアニメーション
 - 画像は必ずobject-fit: coverで美しくトリミング
 - ボタンはbox-shadow + transitionでリッチに
 - モバイル対応（max-width 768px breakpoint）
 - フォームaction="${contactEmail ? `https://formspree.io/f/dummy" data-email="${contactEmail}` : 'https://formspree.io/f/dummy'}"
 - スムーズスクロール（scroll-behavior: smooth）
-- 合計1000行以上の高品質HTML`;
+- 合計1200行以上の高品質HTML`;
 }
 
 // ─── High-quality fallback HTML ───────────────────────────────────────────────
 
-function buildFallbackLP(input: LPInput): string {
+async function buildFallbackLP(input: LPInput): Promise<string> {
   const { tone, businessName, lpPurpose, targetAudience, sellingPoints, catchphraseHint, cvGoal, cvButtonText, cvUrl, contactEmail } = input;
-  const images = resolveImages(input);
+  const images = await resolveImages(input);
   const heroImg = images[0];
   const sectionImg1 = images[1] ?? images[0];
   const sectionImg2 = images[2] ?? images[0];
@@ -1042,10 +1177,10 @@ export async function POST(request: NextRequest) {
         html = await generateLPWithAI(input);
       } catch (err) {
         console.warn('AI generation failed, using fallback:', err);
-        html = buildFallbackLP(input);
+        html = await buildFallbackLP(input);
       }
     } else {
-      html = buildFallbackLP(input);
+      html = await buildFallbackLP(input);
     }
 
     return NextResponse.json({ html });

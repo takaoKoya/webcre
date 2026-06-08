@@ -5,12 +5,87 @@ import Link from 'next/link';
 import {
   Zap, Globe, Image as ImageIcon, Upload, ArrowRight, ArrowLeft,
   CheckCircle, AlertCircle, RefreshCw, Download, Palette,
-  Sparkles, Target, MousePointerClick, Eye, Code, Save,
+  Sparkles, Target, MousePointerClick, Eye, Save,
   Trash2, ChevronDown, ChevronUp, Image as BannerIcon, Copy,
 } from 'lucide-react';
 import { useLPCreatorStore, type LPCreatorStep } from '@/lib/lp-creator-store';
 import type { ToneAnalysis } from '@/app/api/analyze-site/route';
 import type { LPInput } from '@/app/api/generate-lp-from-site/route';
+
+// ─── WYSIWYG editable field helpers ─────────────────────────────────────────
+
+type EditableField = {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'image' | 'color';
+  value: string;
+  selector: string;
+};
+
+function extractEditableFields(html: string): EditableField[] {
+  const fields: EditableField[] = [];
+
+  // h1 (hero title)
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  if (h1Match) {
+    fields.push({ id: 'hero_title', label: 'ヒーロー見出し', type: 'textarea', value: h1Match[1].replace(/<[^>]+>/g, ''), selector: 'h1' });
+  }
+
+  // h2 section titles
+  const h2Matches = [...html.matchAll(/<h2[^>]*class="[^"]*section-title[^"]*"[^>]*>([\s\S]*?)<\/h2>/gi)];
+  h2Matches.slice(0, 5).forEach((m, i) => {
+    fields.push({ id: `section_title_${i}`, label: `セクション見出し${i + 1}`, type: 'text', value: m[1].replace(/<[^>]+>/g, ''), selector: `h2.section-title:nth-of-type(${i + 1})` });
+  });
+
+  // CTA button text
+  const btnMatch = html.match(/<button[^>]*class="[^"]*btn-primary[^"]*"[^>]*>([\s\S]*?)<\/button>/i)
+    || html.match(/<a[^>]*class="[^"]*btn-primary[^"]*"[^>]*>([\s\S]*?)<\/a>/i);
+  if (btnMatch) {
+    fields.push({ id: 'cta_text', label: 'CTAボタンテキスト', type: 'text', value: btnMatch[1].replace(/<[^>]+>/g, '').trim(), selector: '.btn-primary' });
+  }
+
+  // Background image URL
+  const bgMatch = html.match(/background-image:\s*url\(['"]?([^'")\s]+)['"]?\)/);
+  if (bgMatch) {
+    fields.push({ id: 'hero_image', label: 'ヒーロー画像URL', type: 'image', value: bgMatch[1], selector: '.hero-bg' });
+  }
+
+  // Primary color
+  const colorMatch = html.match(/--primary:\s*(#[0-9a-fA-F]{3,6})/);
+  if (colorMatch) {
+    fields.push({ id: 'primary_color', label: 'プライマリカラー', type: 'color', value: colorMatch[1], selector: ':root --primary' });
+  }
+
+  // Accent color
+  const accentMatch = html.match(/--accent:\s*(#[0-9a-fA-F]{3,6})/);
+  if (accentMatch) {
+    fields.push({ id: 'accent_color', label: 'アクセントカラー', type: 'color', value: accentMatch[1], selector: ':root --accent' });
+  }
+
+  return fields;
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function applyFieldEdit(html: string, fieldId: string, newValue: string, oldValue: string): string {
+  if (fieldId === 'hero_image') {
+    return html.replace(
+      new RegExp(`(background-image:\\s*url\\(['"']?)${escapeRegex(oldValue)}(['"']?\\))`, 'g'),
+      `$1${newValue}$2`
+    );
+  }
+  if (fieldId === 'primary_color') {
+    return html.replace(`--primary: ${oldValue}`, `--primary: ${newValue}`);
+  }
+  if (fieldId === 'accent_color') {
+    return html.replace(`--accent: ${oldValue}`, `--accent: ${newValue}`);
+  }
+  // Text fields: replace inner text
+  if (!oldValue.trim()) return html;
+  return html.replace(new RegExp(escapeRegex(oldValue), 'g'), newValue);
+}
 
 // ─── Archive types ───────────────────────────────────────────────────────────
 
@@ -348,8 +423,33 @@ function Step3() {
     toneAnalysis, setStep,
   } = useLPCreatorStore();
 
+  const [catchOptions, setCatchOptions] = useState<string[]>([]);
+  const [catchLoading, setCatchLoading] = useState(false);
+
   const canNext = businessName.trim() && lpPurpose.trim() && targetAudience.trim()
     && sellingPoints.filter(s => s.trim()).length >= 1;
+
+  const handleGenerateCatch = async () => {
+    setCatchLoading(true);
+    try {
+      const res = await fetch('/api/generate-catchphrase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName,
+          industry,
+          lpPurpose,
+          targetAudience,
+          sellingPoints: sellingPoints.filter(Boolean),
+          toneLabel: toneAnalysis?.toneLabel,
+        }),
+      });
+      const data = await res.json() as { catchphrases: string[] };
+      setCatchOptions(data.catchphrases ?? []);
+    } finally {
+      setCatchLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -445,15 +545,43 @@ function Step3() {
       </div>
 
       <div>
-        <label className="block text-white/60 text-xs mb-1.5">キャッチコピーのヒント（任意）</label>
-        <input
-          type="text"
-          value={catchphraseHint}
-          onChange={e => setCatchphraseHint(e.target.value)}
-          placeholder={toneAnalysis?.catchphraseHint || '例: 変わりたいあなたへ、最初の一歩を一緒に'}
-          className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-purple-500/60 transition-all"
-        />
+        <div className="flex gap-2 items-start">
+          <div className="flex-1">
+            <label className="block text-white/60 text-xs mb-1.5">
+              キャッチコピーヒント（任意）
+            </label>
+            <input
+              type="text"
+              value={catchphraseHint}
+              onChange={e => setCatchphraseHint(e.target.value)}
+              placeholder={toneAnalysis?.catchphraseHint || '例: 変わりたいあなたへ、最初の一歩を一緒に'}
+              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-purple-500/60 transition-all"
+            />
+          </div>
+          <button
+            onClick={handleGenerateCatch}
+            disabled={catchLoading || !businessName.trim()}
+            className="mt-5 flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-purple-500/20 border border-purple-500/30 hover:bg-purple-500/30 text-purple-300 text-xs font-medium transition-all disabled:opacity-40 whitespace-nowrap"
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${catchLoading ? 'animate-spin' : ''}`} />
+            {catchLoading ? '生成中' : 'AIで生成'}
+          </button>
+        </div>
         <p className="text-white/30 text-xs mt-1">AIが参考にしてキャッチコピーを生成します</p>
+        {catchOptions.length > 0 && (
+          <div className="mt-2 rounded-xl border border-purple-500/20 bg-purple-500/5 p-3 space-y-1.5">
+            <p className="text-purple-300/70 text-xs mb-2">クリックして選択：</p>
+            {catchOptions.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => { setCatchphraseHint(opt); setCatchOptions([]); }}
+                className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 text-white/80 hover:text-white text-sm transition-all"
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex gap-3">
@@ -647,9 +775,9 @@ function Step5() {
   const [previewFull, setPreviewFull] = useState(false);
   const [regenLoading, setRegenLoading] = useState(false);
 
-  // HTML editor state
+  // Visual editor state
   const [editMode, setEditMode] = useState(false);
-  const [editHtml, setEditHtml] = useState(generatedHtml);
+  const [editFields, setEditFields] = useState<EditableField[]>([]);
   const [previewHtml, setPreviewHtml] = useState(generatedHtml);
 
   // Archive state
@@ -664,9 +792,15 @@ function Step5() {
   const [copiedBannerId, setCopiedBannerId] = useState<string | null>(null);
 
   useEffect(() => {
-    setEditHtml(generatedHtml);
     setPreviewHtml(generatedHtml);
   }, [generatedHtml]);
+
+  // Extract editable fields when edit mode activates
+  useEffect(() => {
+    if (editMode) {
+      setEditFields(extractEditableFields(previewHtml));
+    }
+  }, [editMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setArchives(loadArchives());
@@ -705,16 +839,17 @@ function Step5() {
       const { html } = await res.json() as { html: string };
       setGeneratedHtml(html);
       setPreviewHtml(html);
-      setEditHtml(html);
+      setEditMode(false);
     } finally {
       setRegenLoading(false);
     }
   };
 
-  const handleApplyEdit = () => {
-    setPreviewHtml(editHtml);
-    setGeneratedHtml(editHtml);
-    setEditMode(false);
+  const handleFieldChange = (fieldId: string, newValue: string, oldValue: string) => {
+    const updated = applyFieldEdit(previewHtml, fieldId, newValue, oldValue);
+    setPreviewHtml(updated);
+    setGeneratedHtml(updated);
+    setEditFields(prev => prev.map(f => f.id === fieldId ? { ...f, value: newValue } : f));
   };
 
   const handleSaveArchive = () => {
@@ -744,8 +879,8 @@ function Step5() {
 
   const handlePreviewArchive = (html: string) => {
     setPreviewHtml(html);
-    setEditHtml(html);
     setGeneratedHtml(html);
+    setEditMode(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -781,6 +916,52 @@ function Step5() {
     });
   };
 
+  const handleDownloadBanner = async (banner: BannerResult, format: 'png' | 'jpeg') => {
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+
+      const container = document.createElement('div');
+      container.style.cssText = `position:fixed;left:-9999px;top:-9999px;width:${banner.w}px;height:${banner.h}px;overflow:hidden;`;
+      document.body.appendChild(container);
+
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = `width:${banner.w}px;height:${banner.h}px;border:none;`;
+      iframe.srcdoc = banner.html;
+      container.appendChild(iframe);
+
+      await new Promise<void>(resolve => {
+        iframe.onload = () => resolve();
+        setTimeout(resolve, 1500);
+      });
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) { document.body.removeChild(container); return; }
+
+      const canvas = await html2canvas(iframeDoc.body, {
+        width: banner.w, height: banner.h,
+        scale: 1, useCORS: true, allowTaint: true,
+      });
+
+      document.body.removeChild(container);
+
+      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+      const dataUrl = format === 'png' ? canvas.toDataURL(mimeType) : canvas.toDataURL(mimeType, 0.92);
+
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `banner_${banner.id}.${format}`;
+      a.click();
+    } catch (err) {
+      console.error('Banner download failed:', err);
+      // Fallback: HTML download
+      const blob = new Blob([banner.html], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `banner_${banner.id}.html`;
+      a.click();
+    }
+  };
+
   const formatDate = (iso: string) => {
     try {
       return new Date(iso).toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' });
@@ -807,11 +988,11 @@ function Step5() {
             再生成
           </button>
           <button
-            onClick={() => { setEditMode(v => !v); setEditHtml(previewHtml); }}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs transition-all ${editMode ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-300' : 'border-white/10 hover:bg-white/5 text-white/60 hover:text-white'}`}
+            onClick={() => setEditMode(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs transition-all ${editMode ? 'border-purple-500/50 bg-purple-500/10 text-purple-300' : 'border-white/10 hover:bg-white/5 text-white/60 hover:text-white'}`}
           >
-            <Code className="w-3.5 h-3.5" />
-            HTMLを編集
+            <Sparkles className="w-3.5 h-3.5" />
+            ビジュアル編集
           </button>
           <button
             onClick={() => setPreviewFull(v => !v)}
@@ -837,51 +1018,85 @@ function Step5() {
         </div>
       </div>
 
-      {/* HTML Editor (inline) */}
+      {/* Visual Editor (WYSIWYG split panel) */}
       {editMode && (
-        <div className="rounded-xl border border-yellow-500/30 bg-[#0d1117] overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-yellow-500/20 bg-yellow-500/5">
-            <span className="text-yellow-300 text-xs font-semibold flex items-center gap-1.5"><Code className="w-3.5 h-3.5" />HTMLを直接編集</span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleApplyEdit}
-                className="px-3 py-1 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-xs font-medium transition-all"
-              >
-                プレビューを更新
-              </button>
-              <button
-                onClick={() => setEditMode(false)}
-                className="px-3 py-1 rounded-lg border border-white/10 text-white/40 hover:text-white text-xs transition-all"
-              >
-                キャンセル
-              </button>
+        <div className="grid grid-cols-2 gap-4" style={{ height: '600px' }}>
+          {/* Left: Edit Panel */}
+          <div className="rounded-xl border border-purple-500/30 bg-[#0d1117] overflow-y-auto p-4 space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-purple-300 text-sm font-semibold">ビジュアル編集</h3>
+              <button onClick={() => setEditMode(false)} className="text-white/40 hover:text-white text-xs">閉じる</button>
             </div>
+            {editFields.length === 0 && (
+              <p className="text-white/30 text-xs">編集可能なフィールドが見つかりませんでした。</p>
+            )}
+            {editFields.map(field => (
+              <div key={field.id}>
+                <label className="block text-white/60 text-xs mb-1">{field.label}</label>
+                {field.type === 'textarea' ? (
+                  <textarea
+                    value={field.value}
+                    onChange={e => handleFieldChange(field.id, e.target.value, field.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-mono resize-none focus:outline-none focus:border-purple-500/60"
+                    rows={3}
+                  />
+                ) : field.type === 'color' ? (
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={field.value}
+                      onChange={e => handleFieldChange(field.id, e.target.value, field.value)}
+                      className="w-10 h-10 rounded-lg cursor-pointer border-0"
+                    />
+                    <input type="text" value={field.value}
+                      onChange={e => handleFieldChange(field.id, e.target.value, field.value)}
+                      className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-mono focus:outline-none"
+                    />
+                  </div>
+                ) : field.type === 'image' ? (
+                  <div className="space-y-1">
+                    <input type="text" value={field.value}
+                      onChange={e => handleFieldChange(field.id, e.target.value, field.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-mono focus:outline-none"
+                      placeholder="https://..."
+                    />
+                    {field.value && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={field.value} className="w-full h-16 object-cover rounded-lg opacity-70" alt="" />
+                    )}
+                  </div>
+                ) : (
+                  <input type="text" value={field.value}
+                    onChange={e => handleFieldChange(field.id, e.target.value, field.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-mono focus:outline-none"
+                  />
+                )}
+              </div>
+            ))}
           </div>
-          <textarea
-            value={editHtml}
-            onChange={e => setEditHtml(e.target.value)}
-            className="w-full h-64 p-4 bg-transparent text-green-300 text-xs font-mono resize-y focus:outline-none"
-            spellCheck={false}
-          />
+          {/* Right: Live Preview */}
+          <div className="rounded-xl border border-white/10 overflow-hidden">
+            <iframe srcDoc={previewHtml} className="w-full h-full bg-white" title="Live Preview" sandbox="allow-same-origin allow-scripts" />
+          </div>
         </div>
       )}
 
       {/* Preview */}
-      <div className={`rounded-2xl overflow-hidden border border-white/10 ${previewFull ? 'fixed inset-4 z-50 bg-white' : 'w-full'}`}>
-        {previewFull && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-[#161b22] border-b border-white/10">
-            <div className="flex gap-1.5">{['bg-red-500/70','bg-yellow-500/70','bg-green-500/70'].map(c=><div key={c} className={`w-2.5 h-2.5 rounded-full ${c}`}/>)}</div>
-            <span className="flex-1 text-center text-white/30 text-xs">{businessName}</span>
-            <button onClick={() => setPreviewFull(false)} className="text-white/40 hover:text-white text-xs">閉じる</button>
-          </div>
-        )}
-        <iframe
-          srcDoc={previewHtml}
-          className={`w-full bg-white ${previewFull ? 'h-[calc(100vh-44px)]' : 'h-[500px]'}`}
-          title="LP Preview"
-          sandbox="allow-same-origin allow-forms allow-scripts"
-        />
-      </div>
+      {!editMode && (
+        <div className={`rounded-2xl overflow-hidden border border-white/10 ${previewFull ? 'fixed inset-4 z-50 bg-white' : 'w-full'}`}>
+          {previewFull && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-[#161b22] border-b border-white/10">
+              <div className="flex gap-1.5">{['bg-red-500/70','bg-yellow-500/70','bg-green-500/70'].map(c=><div key={c} className={`w-2.5 h-2.5 rounded-full ${c}`}/>)}</div>
+              <span className="flex-1 text-center text-white/30 text-xs">{businessName}</span>
+              <button onClick={() => setPreviewFull(false)} className="text-white/40 hover:text-white text-xs">閉じる</button>
+            </div>
+          )}
+          <iframe
+            srcDoc={previewHtml}
+            className={`w-full bg-white ${previewFull ? 'h-[calc(100vh-44px)]' : 'h-[500px]'}`}
+            title="LP Preview"
+            sandbox="allow-same-origin allow-forms allow-scripts"
+          />
+        </div>
+      )}
 
       {/* Bottom action row */}
       <div className="flex gap-3">
@@ -931,13 +1146,27 @@ function Step5() {
                       <span className="text-white/80 text-xs font-semibold">{b.name}</span>
                       <span className="text-white/30 text-xs ml-2">{b.w}×{b.h}px · {b.platform}</span>
                     </div>
-                    <button
-                      onClick={() => handleCopyBanner(b.id, b.html)}
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-white/10 hover:bg-white/5 text-white/50 hover:text-white text-xs transition-all"
-                    >
-                      <Copy className="w-3 h-3" />
-                      {copiedBannerId === b.id ? 'コピー済み' : 'HTMLコピー'}
-                    </button>
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => handleCopyBanner(b.id, b.html)}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-white/10 hover:bg-white/5 text-white/50 hover:text-white text-xs transition-all"
+                      >
+                        <Copy className="w-3 h-3" />
+                        {copiedBannerId === b.id ? 'コピー済み' : 'HTMLコピー'}
+                      </button>
+                      <button
+                        onClick={() => handleDownloadBanner(b, 'png')}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 text-green-300 text-xs transition-all"
+                      >
+                        <Download className="w-3 h-3" />PNG
+                      </button>
+                      <button
+                        onClick={() => handleDownloadBanner(b, 'jpeg')}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 text-blue-300 text-xs transition-all"
+                      >
+                        <Download className="w-3 h-3" />JPEG
+                      </button>
+                    </div>
                   </div>
                   <div className="p-3 overflow-auto max-h-32">
                     <iframe
