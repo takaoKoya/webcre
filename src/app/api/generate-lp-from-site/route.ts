@@ -25,29 +25,45 @@ const CV_LABELS: Record<LPInput['cvGoal'], string> = {
   reservation: '予約する',
 };
 
-// ─── Industry → Unsplash image keywords ─────────────────────────────────────
+// ─── Image resolution: site images → Unsplash → Picsum ──────────────────────
 
-const INDUSTRY_IMAGE_SEEDS: Record<string, string[]> = {
-  beauty: ['beauty-salon', 'spa-luxury', 'hair-salon', 'cosmetics', 'wellness'],
-  medical: ['doctor-clinic', 'healthcare', 'medical-office', 'hospital', 'health'],
-  restaurant: ['restaurant-food', 'fine-dining', 'japanese-food', 'cafe-interior', 'cuisine'],
-  fitness: ['gym-fitness', 'workout', 'sports-training', 'healthy-lifestyle', 'exercise'],
-  legal: ['law-office', 'attorney', 'business-professional', 'meeting-room', 'justice'],
-  realestate: ['real-estate', 'luxury-home', 'modern-house', 'interior-design', 'property'],
-  education: ['education', 'study-learning', 'classroom', 'university', 'knowledge'],
-  it: ['technology', 'software-development', 'digital-office', 'coding', 'innovation'],
-  construction: ['construction', 'architecture', 'building', 'engineering', 'modern-building'],
-  retail: ['retail-shop', 'shopping', 'boutique', 'product', 'store'],
-  other: ['business-success', 'team-work', 'professional', 'office', 'modern-workspace'],
+const UNSPLASH_KEYWORDS: Record<string, string[]> = {
+  beauty: ['beauty salon', 'spa treatment', 'hair salon', 'skincare', 'wellness'],
+  medical: ['doctor clinic', 'healthcare', 'medical office', 'hospital', 'health'],
+  restaurant: ['restaurant dining', 'fine dining', 'japanese food', 'cafe interior', 'cuisine'],
+  fitness: ['gym fitness', 'workout training', 'sports', 'healthy lifestyle', 'exercise'],
+  legal: ['law office', 'attorney meeting', 'business professional', 'justice'],
+  realestate: ['luxury home interior', 'modern house', 'real estate', 'property'],
+  education: ['education learning', 'classroom', 'university study', 'knowledge'],
+  it: ['technology office', 'software development', 'digital innovation', 'coding'],
+  construction: ['construction architecture', 'modern building', 'engineering'],
+  retail: ['retail shop', 'boutique store', 'shopping', 'product display'],
+  other: ['business team', 'professional office', 'modern workspace', 'success'],
 };
 
-function getImageUrl(seed: string, w = 1200, h = 700): string {
-  return `https://picsum.photos/seed/${seed}/${w}/${h}`;
+function getUnsplashUrl(keyword: string, w = 1200, h = 700): string {
+  // Unsplash Source API — no key required, returns relevant image
+  return `https://source.unsplash.com/${w}x${h}/?${encodeURIComponent(keyword)}`;
 }
 
-function getIndustryImages(industry: string): string[] {
-  const seeds = INDUSTRY_IMAGE_SEEDS[industry] ?? INDUSTRY_IMAGE_SEEDS.other;
-  return seeds.map((s, i) => getImageUrl(s, i === 0 ? 1400 : 800, i === 0 ? 800 : 500));
+function resolveImages(input: LPInput): string[] {
+  const { tone, industry } = input;
+  const siteImgs: string[] = tone.siteImages ?? [];
+
+  // If we have site images, use them (first 5 content images)
+  if (siteImgs.length >= 2) {
+    // Pad to 5 with Unsplash if needed
+    const keywords = UNSPLASH_KEYWORDS[industry ?? 'other'] ?? UNSPLASH_KEYWORDS.other;
+    const padded = [...siteImgs];
+    for (let i = padded.length; i < 5; i++) {
+      padded.push(getUnsplashUrl(keywords[i % keywords.length]));
+    }
+    return padded.slice(0, 5);
+  }
+
+  // No site images → Unsplash with industry keywords
+  const keywords = UNSPLASH_KEYWORDS[industry ?? 'other'] ?? UNSPLASH_KEYWORDS.other;
+  return keywords.map((kw, i) => getUnsplashUrl(kw, i === 0 ? 1400 : 800, i === 0 ? 800 : 500));
 }
 
 function getAvatarUrl(n: number): string {
@@ -59,7 +75,7 @@ function getAvatarUrl(n: number): string {
 async function generateLPWithAI(input: LPInput): Promise<string> {
   const openai = (await import('@/lib/openai')).default;
 
-  const images = getIndustryImages(input.industry ?? 'other');
+  const images = resolveImages(input);
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
@@ -80,7 +96,7 @@ const SYSTEM_PROMPT = `あなたは世界最高水準のウェブデザイナー
 指定された条件で、実際のプロが作るような完成度の高いランディングページHTMLを生成します。
 以下のデザイン原則を必ず守ってください：
 - ファーストビューは視覚的に圧倒的インパクト（大きな見出し・美しい背景）
-- Picsum Photos（https://picsum.photos/seed/...）を使った実際の画像を配置
+- 提供された画像URLを必ずそのまま使用すること（差し替え・プレースホルダー禁止）
 - アバター画像（https://i.pravatar.cc/80?img=N）でリアルな顔写真を使用
 - CSSアニメーション（fadeInUp, fadeInLeft等）で洗練された動き
 - ブランドカラーを活かした美しいグラデーション
@@ -162,7 +178,7 @@ ${contactEmail ? `- 受信メール: ${contactEmail}` : ''}
 
 function buildFallbackLP(input: LPInput): string {
   const { tone, businessName, lpPurpose, targetAudience, sellingPoints, catchphraseHint, cvGoal, cvButtonText, cvUrl, contactEmail } = input;
-  const images = getIndustryImages(input.industry ?? 'other');
+  const images = resolveImages(input);
   const heroImg = images[0];
   const sectionImg1 = images[1] ?? images[0];
   const sectionImg2 = images[2] ?? images[0];

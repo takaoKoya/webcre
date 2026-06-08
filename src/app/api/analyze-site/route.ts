@@ -18,9 +18,60 @@ export interface ToneAnalysis {
   businessNameHint: string;  // detected from title / meta
   catchphraseHint: string;   // detected tagline / hero headline
   rawDescription: string;    // AI summary of the site aesthetics
+  siteImages?: string[];     // extracted image URLs from the site
+  siteUrl?: string;          // base URL for resolving relative paths
 }
 
 // ─── Color extraction helpers ───────────────────────────────────────────────
+
+// ─── Image URL extraction ────────────────────────────────────────────────────
+
+function extractSiteImages(html: string, baseUrl: string): string[] {
+  const images: string[] = [];
+
+  // og:image (highest priority)
+  const ogImageRe = /<meta[^>]+(?:property=["']og:image["'][^>]+content=["']([^"']+)["']|content=["']([^"']+)["'][^>]+property=["']og:image["'])/gi;
+  let m;
+  while ((m = ogImageRe.exec(html)) !== null) {
+    const url = m[1] || m[2];
+    if (url) images.push(url);
+  }
+
+  // <img src>
+  const imgRe = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  while ((m = imgRe.exec(html)) !== null) {
+    const src = m[1];
+    if (!src) continue;
+    if (src.startsWith('data:')) continue;
+    if (/icon|logo|favicon|pixel|tracking|1x1|sprite/i.test(src)) continue;
+    if (/\.(svg)(\?|$)/i.test(src)) continue;
+    images.push(src);
+  }
+
+  // Resolve relative URLs → absolute
+  const resolved: string[] = [];
+  let base: URL;
+  try { base = new URL(baseUrl); } catch { return images.slice(0, 10); }
+
+  for (const img of images) {
+    try {
+      const abs = new URL(img, base).href;
+      if (abs.startsWith('http')) resolved.push(abs);
+    } catch { /* skip */ }
+  }
+
+  const unique = [...new Set(resolved)];
+  const filtered = unique.filter(u => {
+    try {
+      const path = new URL(u).pathname;
+      return path.length > 5 && !path.endsWith('/');
+    } catch { return false; }
+  });
+
+  return filtered.slice(0, 12);
+}
+
+// ─── Color extraction helpers (original) ────────────────────────────────────
 
 function extractHexColors(html: string): string[] {
   const hexRe = /#(?:[0-9a-fA-F]{3,4}){1,2}\b/g;
@@ -253,10 +304,12 @@ export async function POST(request: NextRequest) {
     const colors = extractHexColors(html);
     const fonts = extractFontFamilies(html);
     const { title, description } = extractMetaText(html);
+    const siteImages = extractSiteImages(html, body.url);
     const htmlSnippet = html.slice(0, 3000);
 
     if (!hasAI) {
-      return NextResponse.json(buildFallbackAnalysis(colors, fonts, title, description));
+      const fallback = buildFallbackAnalysis(colors, fonts, title, description);
+      return NextResponse.json({ ...fallback, siteImages, siteUrl: body.url });
     }
 
     try {
@@ -268,10 +321,11 @@ export async function POST(request: NextRequest) {
         fonts,
         isImage: false,
       });
-      return NextResponse.json(analysis);
+      return NextResponse.json({ ...analysis, siteImages, siteUrl: body.url });
     } catch (aiErr) {
       console.warn('AI analysis failed, using fallback:', aiErr);
-      return NextResponse.json(buildFallbackAnalysis(colors, fonts, title, description));
+      const fallback = buildFallbackAnalysis(colors, fonts, title, description);
+      return NextResponse.json({ ...fallback, siteImages, siteUrl: body.url });
     }
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
